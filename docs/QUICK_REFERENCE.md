@@ -18,13 +18,15 @@ Mobile-first trivia PWA that generates questions on-the-fly:
 
 | File | Purpose | Type |
 |------|---------|------|
-| `app/page.tsx` | Main game orchestrator, state management | Client |
+| `app/page.tsx` | Main game orchestrator, state management, cache usage | Client |
 | `components/GameScreen.tsx` | Game UI (timer, buttons, feedback) | Client |
+| `components/ErrorNotification.tsx` | Popup for API failures (e.g. rate limit) | Client |
 | `lib/server/ai.ts` | AI service (Gemini → Groq → Hugging Face) | Server |
-| `lib/server/game.ts` | Server action wrapper for AI | Server |
+| `lib/server/game.ts` | Server action (AI + batch generation) | Server |
 | `lib/server/logger.ts` | Server-side file logging | Server |
 | `lib/client/wikipedia-client.ts` | Wikipedia fetch (client-side) | Client |
 | `lib/client/fallback-data.ts` | Backup data sources | Client |
+| `lib/client/question-cache.ts` | In-memory cache for pre-generated questions | Client |
 | `lib/types.ts` | Shared TypeScript types | Shared |
 | `constants/topics.ts` | Curated topics by category | Data |
 
@@ -51,9 +53,12 @@ User Answer → Next Question (repeat)
 **In `app/page.tsx`:**
 - `selectedCategory`: Current category (persists)
 - `askedQuestions`: Array of question strings (deduplication)
+- `previousAnswerIndices`: Last correct-answer indices (for AI diversity)
 - `currentTopic`: Active topic for current question
 - `trivia`: Current question data
 - `score`: `{ correct: number, total: number }`
+- `notificationError`: Current API error for ErrorNotification
+- `questionCacheRef`: Ref to QuestionCache instance
 
 ---
 
@@ -148,7 +153,7 @@ tail -f logs/quiziai.log
 ## 🔧 Quick Fixes
 
 **Add new AI provider:**
-1. Add `tryNewProviderAPI()` in `lib/ai.ts`
+1. Add `tryNewProviderAPI()` in `lib/server/ai.ts`
 2. Add to fallback chain in `generateTriviaFromContent()`
 3. Update `.env.local.example`
 4. Add tests
@@ -168,4 +173,4 @@ tail -f logs/quiziai.log
 
 ---
 
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-22 (batch/cache/errors)

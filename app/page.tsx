@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import GameScreen from "@/components/GameScreen";
-import { generateTriviaFromContentServer } from "@/lib/server/game";
+import ErrorNotification from "@/components/ErrorNotification";
+import { generateTriviaFromContentServer, generateTriviaBatch } from "@/lib/server/game";
 import { fetchWikipediaSummaryClient } from "@/lib/client/wikipedia-client";
 import { fetchFallbackData } from "@/lib/client/fallback-data";
+import { QuestionCache } from "@/lib/client/question-cache";
 import { TriviaQuestion } from "@/lib/types";
 import {
   getAllCategories,
@@ -23,13 +25,57 @@ export default function Home() {
   const [trivia, setTrivia] = useState<TriviaQuestion | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]); // Track asked questions
+  const [previousAnswerIndices, setPreviousAnswerIndices] = useState<number[]>([]); // Track answer indices for diversity
+  const [notificationError, setNotificationError] = useState<string | null>(null); // Error for notification popup
+  // Use refs to always get latest values for async operations
+  const askedQuestionsRef = useRef<string[]>([]);
+  const previousAnswerIndicesRef = useRef<number[]>([]);
+  const questionCacheRef = useRef<QuestionCache>(new QuestionCache(5, 20)); // Cache for questions (min: 5, target: 20)
+  const currentContentRef = useRef<string>(""); // Store current content for cache refill
+  const isRefillingCacheRef = useRef<boolean>(false); // Prevent multiple refills
+
+  // Refill cache in background
+  const refillCache = async (content: string) => {
+    if (isRefillingCacheRef.current) return;
+    isRefillingCacheRef.current = true;
+
+    try {
+      const targetSize = questionCacheRef.current.getTargetSize();
+      const currentSize = questionCacheRef.current.size();
+      const needed = Math.max(0, targetSize - currentSize);
+
+      if (needed > 0) {
+        console.log(`🔄 [CACHE] Refilling cache: ${needed} questions needed`);
+        const batch = await generateTriviaBatch(
+          content,
+          needed,
+          askedQuestionsRef.current,
+          previousAnswerIndicesRef.current
+        );
+
+        if (batch.questions.length > 0) {
+          questionCacheRef.current.pushMany(batch.questions);
+          console.log(`✅ [CACHE] Added ${batch.questions.length} questions to cache`);
+        }
+
+        if (batch.errors.some(e => e === "RATE_LIMIT")) {
+          setNotificationError("RATE_LIMIT");
+        }
+      }
+    } catch (error) {
+      console.error("❌ [CACHE] Error refilling cache:", error);
+    } finally {
+      isRefillingCacheRef.current = false;
+    }
+  };
+
 
   const handleStartGame = async (topicToUse?: string, categoryOverride?: Category | null) => {
     let topicForGame: string;
-    
+
     // Use categoryOverride if provided (for immediate use), otherwise use state
     const categoryToUse = categoryOverride !== undefined ? categoryOverride : selectedCategory;
-    
+
     // If category is selected, always pick a random topic from that category
     if (categoryToUse) {
       topicForGame = getRandomTopicFromCategory(categoryToUse);
@@ -37,7 +83,7 @@ export default function Home() {
       // Use provided topic or fallback to input field
       topicForGame = String(topicToUse || topic || "");
     }
-    
+
     if (!topicForGame.trim()) {
       return;
     }
@@ -53,7 +99,7 @@ export default function Home() {
       // If Wikipedia fails, try fallback data source
       if (!summary || !summary.extract) {
         const fallbackData = await fetchFallbackData(topicForGame.trim());
-        
+
         if (fallbackData && fallbackData.extract) {
           summary = {
             title: fallbackData.title,
@@ -68,28 +114,165 @@ export default function Home() {
         setLoading(false);
         return;
       }
-      
-      // Generate trivia from the content (server-side for AI)
-      // Pass previously asked questions to avoid duplicates
-      const result = await generateTriviaFromContentServer(
-        summary.extract,
-        askedQuestions
-      );
-      
-      if (result.error) {
-        console.error("❌ [GAME] AI error:", result.error);
-        setError(result.error);
+
+      // Store content for cache refilling
+      currentContentRef.current = summary.extract;
+
+      // Check cache first
+      let cachedQuestion = questionCacheRef.current.pop();
+
+      // If cache is empty or low, generate a batch immediately
+      if (!cachedQuestion || questionCacheRef.current.needsRefill()) {
+        console.log("🔄 [GAME] Cache empty/low, generating batch...");
+        const batchSize = questionCacheRef.current.isEmpty() ? 20 : 15; // Generate 20 if empty, 15 if low
+        const batch = await generateTriviaBatch(
+          summary.extract,
+          batchSize,
+          askedQuestionsRef.current,
+          previousAnswerIndicesRef.current
+        );
+
+        if (batch.questions.length > 0) {
+          // Add all questions to cache
+          questionCacheRef.current.pushMany(batch.questions);
+          console.log(`✅ [GAME] Generated ${batch.questions.length} questions, added to cache`);
+
+          // Get first question from cache
+          cachedQuestion = questionCacheRef.current.pop();
+
+          // Handle rate limit errors
+          if (batch.errors.some(e => e === "RATE_LIMIT")) {
+            setNotificationError("RATE_LIMIT");
+          }
+        } else {
+          // Batch generation failed, try single question as fallback
+          console.warn("⚠️ [GAME] Batch generation failed, trying single question...");
+          const result = await generateTriviaFromContentServer(
+            summary.extract,
+            askedQuestionsRef.current,
+            previousAnswerIndicesRef.current
+          );
+
+          if (result.error) {
+            console.error("❌ [GAME] AI error:", result.error);
+            if (result.error === "RATE_LIMIT") {
+              setNotificationError("RATE_LIMIT");
+              setError("Los servicios de IA están temporalmente saturados. Por favor, espera unos momentos.");
+            } else {
+              setError(result.error);
+            }
+            setLoading(false);
+            return;
+          }
+
+          if (result.trivia) {
+            cachedQuestion = result.trivia;
+          } else {
+            setError("No se pudo generar la trivia. Intenta de nuevo.");
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Use cached question
+      if (cachedQuestion) {
+        const isDuplicate = askedQuestionsRef.current.some(
+          (q) => q.toLowerCase().trim() === cachedQuestion!.question.toLowerCase().trim()
+        );
+
+        if (!isDuplicate) {
+          const newQuestions = [...askedQuestionsRef.current, cachedQuestion.question];
+          const newIndices = [...previousAnswerIndicesRef.current, cachedQuestion.correctAnswerIndex];
+          setAskedQuestions(newQuestions);
+          setPreviousAnswerIndices(newIndices);
+          askedQuestionsRef.current = newQuestions;
+          previousAnswerIndicesRef.current = newIndices;
+          setTrivia(cachedQuestion);
+          setLoading(false);
+
+          // Refill cache in background if needed (when below 5 questions)
+          if (questionCacheRef.current.needsRefill() && !isRefillingCacheRef.current) {
+            refillCache(summary.extract);
+          }
+          return;
+        } else {
+          // Duplicate found, try cache again
+          console.warn("⚠️ [GAME] Duplicate question from cache, trying next...");
+          const nextCached = questionCacheRef.current.pop();
+          if (nextCached) {
+            cachedQuestion = nextCached;
+          } else {
+            // Cache exhausted, need to generate more
+            console.warn("⚠️ [GAME] Cache exhausted, generating new batch...");
+            const batch = await generateTriviaBatch(
+              summary.extract,
+              10,
+              askedQuestionsRef.current,
+              previousAnswerIndicesRef.current
+            );
+
+            if (batch.questions.length > 0) {
+              questionCacheRef.current.pushMany(batch.questions);
+              cachedQuestion = questionCacheRef.current.pop();
+            }
+          }
+        }
+      }
+
+      // Fallback: if we still don't have a question, show error
+      if (!cachedQuestion) {
+        console.error("❌ [GAME] Could not generate any questions");
+        setError("No se pudo generar la trivia. Intenta de nuevo.");
         setLoading(false);
         return;
       }
 
-      if (result.trivia) {
-        // Add question to asked questions list
-        setAskedQuestions((prev) => [...prev, result.trivia!.question]);
-        setTrivia(result.trivia);
-      } else {
-        console.error("❌ [GAME] No trivia generated");
-        setError("No se pudo generar la trivia. Intenta de nuevo.");
+      // Final check: use the cached question we found
+      let finalQuestion = cachedQuestion;
+      const isDuplicate = askedQuestionsRef.current.some(
+        (q) => q.toLowerCase().trim() === finalQuestion.question.toLowerCase().trim()
+      );
+
+      if (isDuplicate) {
+        // Last resort: try generating a small batch
+        console.warn("⚠️ [GAME] All cached questions are duplicates, generating emergency batch...");
+        const emergencyBatch = await generateTriviaBatch(
+          summary.extract,
+          5,
+          askedQuestionsRef.current,
+          previousAnswerIndicesRef.current
+        );
+
+        if (emergencyBatch.questions.length > 0) {
+          questionCacheRef.current.pushMany(emergencyBatch.questions);
+          const freshQuestion = questionCacheRef.current.pop();
+          if (freshQuestion) {
+            finalQuestion = freshQuestion;
+          } else {
+            setError("No se pudo generar una pregunta válida. Intenta con otro tema.");
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError("No se pudo generar una pregunta válida. Intenta con otro tema.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Use the question (should be valid at this point)
+      const newQuestions = [...askedQuestionsRef.current, finalQuestion.question];
+      const newIndices = [...previousAnswerIndicesRef.current, finalQuestion.correctAnswerIndex];
+      setAskedQuestions(newQuestions);
+      setPreviousAnswerIndices(newIndices);
+      askedQuestionsRef.current = newQuestions;
+      previousAnswerIndicesRef.current = newIndices;
+      setTrivia(finalQuestion);
+
+      // Refill cache in background if needed
+      if (questionCacheRef.current.needsRefill() && !isRefillingCacheRef.current) {
+        refillCache(summary.extract);
       }
     } catch (error) {
       console.error("💥 [GAME] Exception caught in handleStartGame:", error);
@@ -124,21 +307,40 @@ export default function Home() {
     setSelectedCategory(null); // Reset category selection
     setScore({ correct: 0, total: 0 });
     setAskedQuestions([]); // Reset asked questions
+    setPreviousAnswerIndices([]); // Reset answer indices
+    askedQuestionsRef.current = []; // Reset refs
+    previousAnswerIndicesRef.current = []; // Reset refs
     setError(null);
+  };
+
+  const handleRetry = () => {
+    setNotificationError(null);
+    setError(null);
+    if (currentContentRef.current) {
+      handleStartGame();
+    }
   };
 
   if (trivia) {
     return (
-      <GameScreen
-        trivia={trivia}
-        onAnswer={handleAnswer}
-        onNextQuestion={handleNextQuestion}
-        onNewTopic={handleNewTopic}
-        score={score}
-        loading={loading}
-        currentTopic={currentTopic}
-        category={selectedCategory ? getCategoryById(selectedCategory) : null}
-      />
+      <>
+        <ErrorNotification
+          error={notificationError}
+          onRetry={handleRetry}
+          onDismiss={() => setNotificationError(null)}
+          autoHide={false}
+        />
+        <GameScreen
+          trivia={trivia}
+          onAnswer={handleAnswer}
+          onNextQuestion={handleNextQuestion}
+          onNewTopic={handleNewTopic}
+          score={score}
+          loading={loading}
+          currentTopic={currentTopic}
+          category={selectedCategory ? getCategoryById(selectedCategory) : null}
+        />
+      </>
     );
   }
 
@@ -164,7 +366,14 @@ export default function Home() {
   const categories = getAllCategories();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4 py-8">
+    <>
+      <ErrorNotification
+        error={notificationError}
+        onRetry={handleRetry}
+        onDismiss={() => setNotificationError(null)}
+        autoHide={false}
+      />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4 py-8">
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-center mb-8">QuiziAI 🧠</h1>
 
@@ -272,5 +481,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </>
   );
 }

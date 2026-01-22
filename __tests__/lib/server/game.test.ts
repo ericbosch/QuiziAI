@@ -22,7 +22,7 @@ describe("Game Service", () => {
     const result = await generateTriviaFromContentServer("Albert Einstein was a theoretical physicist...");
 
     expect(result).toEqual({ trivia: mockTrivia, error: null });
-    expect(generateTriviaFromContent).toHaveBeenCalledWith("Albert Einstein was a theoretical physicist...", []);
+    expect(generateTriviaFromContent).toHaveBeenCalledWith("Albert Einstein was a theoretical physicist...", [], []);
   });
 
   it("should return error for empty content", async () => {
@@ -57,9 +57,10 @@ describe("Game Service", () => {
     (generateTriviaFromContent as jest.Mock).mockResolvedValueOnce(mockTrivia);
 
     const previousQuestions = ["Question 1", "Question 2"];
-    await generateTriviaFromContentServer("Test content", previousQuestions);
+    const previousAnswerIndices = [0, 1];
+    await generateTriviaFromContentServer("Test content", previousQuestions, previousAnswerIndices);
 
-    expect(generateTriviaFromContent).toHaveBeenCalledWith("Test content", previousQuestions);
+    expect(generateTriviaFromContent).toHaveBeenCalledWith("Test content", previousQuestions, previousAnswerIndices);
   });
 
   it("should trim content before processing", async () => {
@@ -74,7 +75,7 @@ describe("Game Service", () => {
 
     await generateTriviaFromContentServer("  Test content  ");
 
-    expect(generateTriviaFromContent).toHaveBeenCalledWith("Test content", []);
+    expect(generateTriviaFromContent).toHaveBeenCalledWith("Test content", [], []);
   });
 
   it("should handle errors gracefully", async () => {

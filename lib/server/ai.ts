@@ -12,7 +12,10 @@ export interface TriviaQuestion {
   funFact: string;
 }
 
-function buildSystemPrompt(previousQuestions: string[] = []): string {
+function buildSystemPrompt(
+  previousQuestions: string[] = [],
+  previousAnswerIndices: number[] = []
+): string {
   let prompt = `Eres un generador de preguntas de trivia. Tu tarea es crear preguntas educativas y entretenidas basadas en el contenido proporcionado.
 
 IMPORTANTE: Debes responder ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin explicaciones.
@@ -31,10 +34,16 @@ Reglas:
 - correctAnswerIndex debe ser 0, 1, 2 o 3 (índice de la opción correcta)
 - El funFact debe ser breve (máximo 100 caracteres) y relacionado con la respuesta correcta
 - Todo el contenido debe estar en español
-- NO incluyas markdown, NO incluyas código, solo el JSON puro`;
+- NO incluyas markdown, NO incluyas código, solo el JSON puro
+- IMPORTANTE: Varía la posición de la respuesta correcta (correctAnswerIndex). No uses siempre la misma posición.`;
 
   if (previousQuestions.length > 0) {
     prompt += `\n\nIMPORTANTE: Ya se han hecho las siguientes preguntas sobre este tema. DEBES crear una pregunta COMPLETAMENTE DIFERENTE que no sea similar a ninguna de estas:\n${previousQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nLa nueva pregunta debe cubrir un aspecto diferente del tema y no repetir información ya preguntada.`;
+  }
+
+  if (previousAnswerIndices.length > 0) {
+    const recentIndices = previousAnswerIndices.slice(-3).join(", ");
+    prompt += `\n\nIMPORTANTE: Las últimas respuestas correctas estuvieron en las posiciones: ${recentIndices}. Por favor, usa una posición DIFERENTE para la respuesta correcta (0, 1, 2 o 3) para mantener la variedad.`;
   }
 
   return prompt;
@@ -190,14 +199,15 @@ async function tryHuggingFaceAPI(prompt: string): Promise<TriviaQuestion | null>
 
 export async function generateTriviaFromContent(
   content: string,
-  previousQuestions: string[] = []
+  previousQuestions: string[] = [],
+  previousAnswerIndices: number[] = []
 ): Promise<TriviaQuestion | null> {
   try {
     logger.log("🤖 [AI] Starting trivia generation");
     logger.log("📊 [AI] Content length:", content.length);
     logger.log("📊 [AI] Previous questions:", previousQuestions.length);
 
-    const systemPrompt = buildSystemPrompt(previousQuestions);
+    const systemPrompt = buildSystemPrompt(previousQuestions, previousAnswerIndices);
     const prompt = `${systemPrompt}\n\nContenido sobre el que crear la trivia:\n\n${content}`;
     logger.log(`🤖 [AI] Prompt length: ${prompt.length} characters`);
 

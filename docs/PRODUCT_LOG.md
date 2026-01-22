@@ -2,8 +2,9 @@
 
 **Project Status:** 🚀 Version 1.0.0-alpha - First Stable Release  
 **Deployment Date:** 2026-01-22  
-**Last Update:** 2026-01-22 - Codebase restructure completed (Phase 2.5)  
-**Next Steps:** Phase 2 features (Haptic Engine, PWA Mastery, Persistence, Cinema Mode)  
+**Deployment URL:** https://quizi-ai.vercel.app/ (when deployed)  
+**Last Update:** 2026-01-22 - Batch generation, caching, error notifications; docs aligned with Gemini notes  
+**Next Steps:** Phase 2 (Gemini-prioritized): 2.1 Haptic Feedback → 2.2 Persistence → 2.3 PWA Icons & Splash  
 **Concept:** AI-powered Trivia PWA using real-time scraping from specialized sources.  
 **Investment:** 0€ (Bootstrapped)  
 **Approach:** Mobile-First (PWA)
@@ -52,7 +53,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - DuckDuckGo Instant Answer API (no API key required)
   - Comprehensive error logging
 - `lib/server/ai.ts`: Gemini integration with strict JSON output enforcement
-  - **Dynamic prompt builder** - Includes previous questions context to avoid duplicates
+  - **Dynamic prompt builder** - Includes previous questions and `previousAnswerIndices` to avoid duplicates and vary correct-answer position
   - Supports multiple Gemini models (2.5-flash, 3-flash-preview, 2.5-pro, 3-pro-preview)
   - REST API v1 direct calls (primary method)
   - SDK fallback for compatibility
@@ -60,19 +61,24 @@ An infinite, personalized trivia experience where content is generated on the fl
   - JSON parsing with error handling
   - Structure validation
 - `lib/server/game.ts`: Server action for AI generation only (Wikipedia fetch moved to client-side)
-  - Accepts `previousQuestions` parameter to avoid duplicate questions
+  - `generateTriviaFromContentServer(content, previousQuestions, previousAnswerIndices)`; returns `RATE_LIMIT` on quota errors
+  - `generateTriviaBatch(content, count, previousQuestions, previousAnswerIndices)` for batch generation (10–20 questions)
   - Separated concerns: client fetches data, server generates AI
   - Comprehensive error messages
+- `lib/client/question-cache.ts`: In-memory cache for pre-generated questions (`minSize` 5, `targetSize` 20); used by `app/page.tsx`
+- `components/ErrorNotification.tsx`: Popup for API failures (e.g. rate limit), retry support
 - `app/page.tsx`: Main game flow with exhaustive logging
   - Client-side data fetching orchestration
   - Error handling and user feedback
   - Topic persistence for infinite trivia
-  - **Question tracking state** - Maintains list of asked questions
+  - **Question cache** - Uses `QuestionCache`; pop from cache first, refill via `generateTriviaBatch` when empty/low
+  - **Question tracking state** - Maintains list of asked questions and `previousAnswerIndices` for diversity
   - **Next question handler** - Separated from answer handler for timer control
   - **Category selection UI** - Quick Play section with tag cloud layout (flex wrap) and "Aleatorio" button
   - **Category handlers** - `handleCategorySelect()` sets category, `handleSurpriseMe()` handles "Aleatorio" button and picks random category
   - **Category persistence** - Selected category tracked in state, used for subsequent questions
   - **Random topic per question** - Each new question picks a random topic from the selected category
+  - **ErrorNotification** - Popup for API failures (e.g. rate limit) with retry
 - `components/GameScreen.tsx`: Dark-themed mobile-first UI with:
   - **Category display in header** - Shows selected category emoji and name during gameplay
   - Large thumb-friendly buttons in bottom half
@@ -111,14 +117,18 @@ An infinite, personalized trivia experience where content is generated on the fl
 - [x] Mobile testing verified and working via ngrok tunnel
 
 ### Phase 2: UX Polish & Specialization (Planned)
+
+**Gemini-prioritized order (native experience focus):**
+
 - [x] **Category Selector:** Implement predefined categories (History, Science, Cinema, Geography, Sports, Literature, Art, Music) ✅ COMPLETE
 - [x] **Random Mode:** Add an "Aleatorio" button that picks a random topic from a curated list ✅ COMPLETE
-- [ ] **Haptic Engine:** Integrate `navigator.vibrate` for tactile feedback on mobile (correct/wrong answers).
-- [ ] **PWA Mastery:**
+- [ ] **2.1 Haptic Engine (NEXT):** Integrate `navigator.vibrate` for tactile feedback on mobile (correct/wrong answers). *Goal: device “reacts” physically; high perceived quality.*
+- [ ] **2.2 Persistence:** Implement `lib/client/storage.ts` for local high scores and streaks using `localStorage`. *Goal: best streak per category on device; improves retention.*
+- [ ] **2.3 PWA Icons & Splash:** Replace default Next.js icon with QuiziAI branding; add splash screens. *Goal: professional home-screen presence.*
+- [ ] **PWA Mastery (extended):**
   - [ ] Optimize `manifest.json` for standalone display.
   - [ ] Add "Theme Color" support for mobile status bars.
   - [ ] Service Worker setup for offline capabilities.
-- [ ] **Persistence:** Implement `lib/client/storage.ts` for local high scores and streaks using `localStorage`.
 - [ ] **Cinema Mode:** Integrate TMDB API (Client-side fetch pattern, following Wikipedia client pattern).
 - [ ] **Multi-category Session:** Allow users to select multiple categories for a mixed trivia session.
 
@@ -196,7 +206,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ Production build successful
 - ✅ Mobile testing infrastructure complete (ngrok + WSL2 support)
 - ✅ Comprehensive documentation (README, architecture guides, troubleshooting)
-- 📋 **Planned:** Code restructure for modern Next.js 14+ conventions (see Phase 2.5)
+- ✅ Question cache & batch generation (reduced AI calls); ErrorNotification for rate limits
 
 **Testing Coverage:**
 - ✅ Unit tests for Wikipedia client service (`__tests__/lib/client/wikipedia-client.test.ts`) - 6 test cases
@@ -319,6 +329,17 @@ An infinite, personalized trivia experience where content is generated on the fl
 - **Status:** ✅ Complete - All tests passing (93/93), build successful
 - **Benefits:** Clear server/client separation, better organization, enhanced security
 - **Documentation:** All docs updated (ARCHITECTURE.md, QUICK_REFERENCE.md, PRODUCT_LOG.md, README.md, guide files)
+
+### Batch Generation, Question Cache & Error Notifications ✅ NEW (2026-01-22)
+- **Feature:** Reduce AI API calls via batching; user-friendly feedback on rate limits.
+- **Implementation:**
+  - **`lib/client/question-cache.ts`:** In-memory cache for `TriviaQuestion[]` with `minSize` (5) and `targetSize` (20). Methods: `pop()`, `push()`, `pushMany()`, `needsRefill()`, `isEmpty()`, `clear()`.
+  - **`generateTriviaBatch`** (`lib/server/game.ts`): Server action to generate 10–20 questions per batch. Deduplicates within batch; stops on `RATE_LIMIT`. Small delay between requests.
+  - **`app/page.tsx`:** Uses cache first; if empty/low, calls `generateTriviaBatch` (20 when empty, 15 when low). Background refill when `needsRefill()`. Single-question fallback if batch fails.
+  - **`components/ErrorNotification.tsx`:** Popup for API failures (e.g. rate limit). Distinguishes `RATE_LIMIT` with retry; optional auto-hide for non-critical errors.
+- **Answer diversity:** `previousAnswerIndices` passed to AI; prompt instructs varying `correctAnswerIndex` (avoids repeated positions).
+- **Deduplication:** Exact-question check before use; emergency batch if cached question is duplicate.
+- **Status:** ✅ Complete. Fewer API calls, clearer UX on quota issues.
 
 ### Git/SSH Authentication Setup ✅ NEW
 - **Feature:** SSH key-based authentication for GitHub

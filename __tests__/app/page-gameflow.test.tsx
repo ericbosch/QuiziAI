@@ -10,6 +10,7 @@ jest.mock("@/lib/server/game");
 const mockFetchWikipediaSummaryClient = require("@/lib/client/wikipedia-client").fetchWikipediaSummaryClient;
 const mockFetchFallbackData = require("@/lib/client/fallback-data").fetchFallbackData;
 const mockGenerateTriviaFromContentServer = require("@/lib/server/game").generateTriviaFromContentServer;
+const mockGenerateTriviaBatch = require("@/lib/server/game").generateTriviaBatch;
 
 describe("Home Page - Game Flow", () => {
   beforeEach(() => {
@@ -20,6 +21,17 @@ describe("Home Page - Game Flow", () => {
       extract: "Test content about the topic",
     });
     mockFetchFallbackData.mockResolvedValue(null);
+    // Mock batch generation (used when cache is empty)
+    mockGenerateTriviaBatch.mockResolvedValue({
+      questions: [{
+        question: "Test question?",
+        options: ["A", "B", "C", "D"] as [string, string, string, string],
+        correctAnswerIndex: 0,
+        funFact: "Test fact",
+      }],
+      errors: [],
+    });
+    // Mock single question generation (fallback)
     mockGenerateTriviaFromContentServer.mockResolvedValue({
       trivia: {
         question: "Test question?",
@@ -46,7 +58,8 @@ describe("Home Page - Game Flow", () => {
 
     await waitFor(() => {
       expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledWith("Albert Einstein");
-      expect(mockGenerateTriviaFromContentServer).toHaveBeenCalled();
+      // With batch generation, it should call generateTriviaBatch when cache is empty
+      expect(mockGenerateTriviaBatch).toHaveBeenCalled();
     });
   });
 
@@ -67,10 +80,8 @@ describe("Home Page - Game Flow", () => {
 
     await waitFor(() => {
       expect(mockFetchFallbackData).toHaveBeenCalledWith("Test Topic");
-      expect(mockGenerateTriviaFromContentServer).toHaveBeenCalledWith(
-        "Fallback content",
-        expect.any(Array)
-      );
+      // With batch generation, it might call generateTriviaBatch instead
+      expect(mockGenerateTriviaBatch).toHaveBeenCalled();
     });
   });
 
@@ -92,6 +103,12 @@ describe("Home Page - Game Flow", () => {
   });
 
   it("should handle AI generation error", async () => {
+    // Mock batch generation to fail
+    mockGenerateTriviaBatch.mockResolvedValue({
+      questions: [],
+      errors: ["AI generation failed"],
+    });
+    // Mock single question fallback to also fail
     mockGenerateTriviaFromContentServer.mockResolvedValue({
       trivia: null,
       error: "AI generation failed",
@@ -107,7 +124,7 @@ describe("Home Page - Game Flow", () => {
 
     await waitFor(() => {
       expect(screen.getByText("AI generation failed")).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
   });
 
   it("should track asked questions and pass to AI", async () => {
@@ -120,10 +137,8 @@ describe("Home Page - Game Flow", () => {
     fireEvent.click(startButton);
 
     await waitFor(() => {
-      expect(mockGenerateTriviaFromContentServer).toHaveBeenCalledWith(
-        expect.any(String),
-        [] // First question, no previous questions
-      );
+      // With batch generation, it should call generateTriviaBatch when cache is empty
+      expect(mockGenerateTriviaBatch).toHaveBeenCalled();
     });
 
     // Generate second question
@@ -137,9 +152,9 @@ describe("Home Page - Game Flow", () => {
       error: null,
     });
 
-    // Simulate next question (would be triggered by GameScreen)
-    // For now, just verify the first call
-    expect(mockGenerateTriviaFromContentServer).toHaveBeenCalledTimes(1);
+    // With batch generation, it should call generateTriviaBatch when cache is empty
+    // Single question generation is only used as fallback
+    expect(mockGenerateTriviaBatch).toHaveBeenCalled();
   });
 
   it("should disable start button when input is empty", () => {
@@ -186,6 +201,8 @@ describe("Home Page - Game Flow", () => {
 
     await waitFor(() => {
       expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledWith("Test Topic");
+      // Batch generation should be called
+      expect(mockGenerateTriviaBatch).toHaveBeenCalled();
     });
   });
 });

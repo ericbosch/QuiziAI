@@ -27,17 +27,19 @@ QuiziAI/
 │   └── globals.css              # Dark theme, mobile-first styles
 │
 ├── components/
-│   └── GameScreen.tsx          # Game UI component (timer, buttons, feedback)
+│   ├── GameScreen.tsx          # Game UI component (timer, buttons, feedback)
+│   └── ErrorNotification.tsx   # Popup for API failures (e.g. rate limit), retry
 │
 ├── lib/                         # Core business logic
-│   ├── server/                  # 🆕 Server-only code
+│   ├── server/                  # Server-only code
 │   │   ├── ai.ts               # AI service (multi-provider fallback)
-│   │   ├── game.ts             # Server action (AI generation wrapper)
+│   │   ├── game.ts             # Server action (AI + batch generation)
 │   │   └── logger.ts           # Server-side file logging utility
-│   ├── client/                  # 🆕 Client-only code
+│   ├── client/                  # Client-only code
 │   │   ├── wikipedia-client.ts # Client-side Wikipedia fetch (primary)
-│   │   └── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
-│   └── types.ts                # 🆕 Shared TypeScript types
+│   │   ├── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
+│   │   └── question-cache.ts   # In-memory cache for pre-generated questions
+│   └── types.ts                # Shared TypeScript types
 │
 ├── constants/
 │   └── topics.ts               # Curated topics by category (8 categories, 120 topics)
@@ -83,16 +85,18 @@ QuiziAI/
    - If fails → REST API fallback
    - If fails → lib/client/fallback-data.ts → English Wiki / DuckDuckGo
    ↓
-4. Send content to AI (server-side):
-   - lib/server/game.ts (server action) → lib/server/ai.ts
-   - ai.ts tries: Gemini → Groq → Hugging Face
-   - Returns TriviaQuestion JSON
+4. Get question (cache-first, then AI):
+   - Check lib/client/question-cache.ts; pop if available.
+   - If empty/low: lib/server/game.ts → generateTriviaBatch(10–20) → push to cache, refill in background.
+   - Fallback: single generateTriviaFromContentServer if batch fails.
+   - lib/server/ai.ts: Gemini → Groq → Hugging Face; returns TriviaQuestion JSON.
+   - On RATE_LIMIT: ErrorNotification popup with retry.
    ↓
 5. Display question in GameScreen.tsx
    ↓
 6. User answers → feedback → timer (10s) → next question
    ↓
-7. Repeat from step 3 (same topic, new random question)
+7. Repeat from step 4 (same topic; new question from cache or AI)
 ```
 
 ### Key Architectural Decisions
@@ -117,6 +121,14 @@ QuiziAI/
    - **Why:** Better UX than manual input
    - **How:** Selected category persists, random topic per question
 
+6. **Question cache & batch generation**
+   - **Why:** Reduce AI API calls, avoid quota limits; faster UX.
+   - **How:** In-memory `QuestionCache` (min 5, target 20). Pop first; `generateTriviaBatch` when empty/low; background refill.
+
+7. **Error notifications**
+   - **Why:** Clear UX when API fails (e.g. rate limit).
+   - **How:** `ErrorNotification` popup with retry; `RATE_LIMIT` distinguished from generic errors.
+
 ---
 
 ## 📦 Key Files & Their Purpose
@@ -126,15 +138,21 @@ QuiziAI/
 - **Responsibilities:**
   - Game state management (topic, category, score, questions)
   - Data fetching orchestration (Wikipedia → fallback)
-  - AI generation trigger (server action)
+  - Question cache usage (pop first; refill via batch when empty/low)
+  - AI generation trigger (server action; batch or single fallback)
   - Category selection UI
   - Manual topic input
+  - ErrorNotification for API failures (e.g. rate limit)
 - **Key State:**
   - `selectedCategory`: Current category (persists across questions)
   - `askedQuestions`: Array of question strings (for deduplication)
+  - `previousAnswerIndices`: Last correct-answer indices (for AI diversity)
   - `currentTopic`: Active topic for current question
+  - `notificationError`: Current API error for ErrorNotification
+- **Key Refs:** `questionCacheRef`, `isRefillingCacheRef`, `currentContentRef`, `askedQuestionsRef`, `previousAnswerIndicesRef`
 - **Key Functions:**
-  - `handleStartGame()`: Main game flow orchestrator
+  - `handleStartGame()`: Main game flow orchestrator (cache → batch → single fallback)
+  - `refillCache()` / `prefillCache()`: Background/pre-start cache refill
   - `handleCategorySelect()`: Category button handler
   - `handleSurpriseMe()`: Random category handler
   - `handleNextQuestion()`: Generate next question (same topic/category)
@@ -156,25 +174,39 @@ QuiziAI/
   - Progress bar
 
 ### `lib/server/ai.ts` (AI Service)
-- **Type:** Server-side only ("use server")
+- **Type:** Server-side only
 - **Exports:**
   - `TriviaQuestion` interface
-  - `generateTriviaFromContent(content, previousQuestions)`
+  - `generateTriviaFromContent(content, previousQuestions, previousAnswerIndices)`
 - **Fallback Chain:**
   1. Gemini REST API v1 (direct fetch)
   2. Gemini SDK (fallback if REST fails)
   3. Groq API (Llama 3.1 8B)
   4. Hugging Face API (Mistral-7B)
 - **Key Functions:**
-  - `buildSystemPrompt(previousQuestions)`: Dynamic prompt with deduplication
+  - `buildSystemPrompt(previousQuestions, previousAnswerIndices)`: Deduplication + vary correct-answer position
   - `parseTriviaResponse(text)`: JSON extraction (handles markdown)
   - `tryGroqAPI()` / `tryHuggingFaceAPI()`: Fallback implementations
 
 ### `lib/server/game.ts` (Server Action Wrapper)
 - **Type:** Server action ("use server")
-- **Purpose:** Wrapper around `ai.ts` for Next.js server actions
-- **Function:** `generateTriviaFromContentServer(content, previousQuestions)`
-- **Returns:** `{ trivia: TriviaQuestion | null, error: string | null }`
+- **Purpose:** Wrapper around `ai.ts`; batch generation for cache refill
+- **Functions:**
+  - `generateTriviaFromContentServer(content, previousQuestions, previousAnswerIndices)` → `{ trivia, error }`; returns `RATE_LIMIT` on quota errors
+  - `generateTriviaBatch(content, count, previousQuestions, previousAnswerIndices)` → `{ questions, errors }`
+- **Returns:** `{ trivia: TriviaQuestion | null, error: string | null }` (single) or `{ questions, errors }` (batch)
+
+### `lib/client/question-cache.ts` (Question Cache)
+- **Type:** Client-side module
+- **Purpose:** In-memory cache for pre-generated questions (reduce AI calls)
+- **Config:** `minSize` 5, `targetSize` 20
+- **Methods:** `pop()`, `push()`, `pushMany()`, `needsRefill()`, `isEmpty()`, `clear()`, `getAll()`
+
+### `components/ErrorNotification.tsx`
+- **Type:** Client component
+- **Purpose:** Popup for API failures (e.g. rate limit)
+- **Props:** `error`, `onRetry`, `onDismiss`
+- **Behavior:** Distinguishes `RATE_LIMIT`; retry support; optional auto-hide
 
 ### `lib/client/wikipedia-client.ts` (Data Fetching)
 - **Type:** Client-side function

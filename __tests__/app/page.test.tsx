@@ -21,6 +21,7 @@ jest.mock("@/constants/topics", () => {
 const mockFetchWikipediaSummaryClient = require("@/lib/client/wikipedia-client").fetchWikipediaSummaryClient;
 const mockFetchFallbackData = require("@/lib/client/fallback-data").fetchFallbackData;
 const mockGenerateTriviaFromContentServer = require("@/lib/server/game").generateTriviaFromContentServer;
+const mockGenerateTriviaBatch = require("@/lib/server/game").generateTriviaBatch;
 
 describe("Home Page - Category Selection", () => {
   beforeEach(() => {
@@ -31,6 +32,17 @@ describe("Home Page - Category Selection", () => {
       extract: "Test content about the topic",
     });
     mockFetchFallbackData.mockResolvedValue(null);
+    // Mock batch generation (used when cache is empty)
+    mockGenerateTriviaBatch.mockResolvedValue({
+      questions: [{
+        question: "Test question?",
+        options: ["A", "B", "C", "D"] as [string, string, string, string],
+        correctAnswerIndex: 0,
+        funFact: "Test fact",
+      }],
+      errors: [],
+    });
+    // Mock single question generation (fallback)
     mockGenerateTriviaFromContentServer.mockResolvedValue({
       trivia: {
         question: "Test question?",
