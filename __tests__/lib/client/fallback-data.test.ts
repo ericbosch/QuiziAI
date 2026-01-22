@@ -1,4 +1,4 @@
-import { fetchFallbackData } from "@/lib/fallback-data";
+import { fetchFallbackData } from "@/lib/client/fallback-data";
 
 // Mock fetch globally
 global.fetch = jest.fn();

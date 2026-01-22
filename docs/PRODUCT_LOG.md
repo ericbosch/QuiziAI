@@ -2,7 +2,8 @@
 
 **Project Status:** 🚀 Version 1.0.0-alpha - First Stable Release  
 **Deployment Date:** 2026-01-22  
-**Next Steps:** 📋 Code restructure planned (see Phase 2.5 below and `docs/RESTRUCTURE_PLAN.md`)  
+**Last Update:** 2026-01-22 - Codebase restructure completed (Phase 2.5)  
+**Next Steps:** Phase 2 features (Haptic Engine, PWA Mastery, Persistence, Cinema Mode)  
 **Concept:** AI-powered Trivia PWA using real-time scraping from specialized sources.  
 **Investment:** 0€ (Bootstrapped)  
 **Approach:** Mobile-First (PWA)
@@ -38,19 +39,19 @@ An infinite, personalized trivia experience where content is generated on the fl
 **Implementation Details:**
 - Next.js 14 (App Router) with TypeScript and Tailwind CSS configured
 - `constants/topics.ts`: Curated topics organized by 8 categories with helper functions for random selection
-- `lib/wikipedia-client.ts`: **Client-side Wikipedia fetch** (primary method - avoids server-side blocking)
+- `lib/client/wikipedia-client.ts`: **Client-side Wikipedia fetch** (primary method - avoids server-side blocking)
   - Tries MediaWiki API first (better CORS support)
   - Falls back to REST API if MediaWiki fails
   - Comprehensive error logging
-- `lib/logger.ts`: **File logging utility** - Dual logging to console and log file
+- `lib/server/logger.ts`: **File logging utility** - Dual logging to console and log file
   - Server-side file logging for AI operations and API calls
   - Automatic log rotation (10MB limit)
   - Timestamped entries with log levels
-- `lib/fallback-data.ts`: Multiple fallback data sources
+- `lib/client/fallback-data.ts`: Multiple fallback data sources
   - English Wikipedia (MediaWiki API)
   - DuckDuckGo Instant Answer API (no API key required)
   - Comprehensive error logging
-- `lib/ai.ts`: Gemini integration with strict JSON output enforcement
+- `lib/server/ai.ts`: Gemini integration with strict JSON output enforcement
   - **Dynamic prompt builder** - Includes previous questions context to avoid duplicates
   - Supports multiple Gemini models (2.5-flash, 3-flash-preview, 2.5-pro, 3-pro-preview)
   - REST API v1 direct calls (primary method)
@@ -58,7 +59,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - Exhaustive logging for debugging
   - JSON parsing with error handling
   - Structure validation
-- `lib/game.ts`: Server action for AI generation only (Wikipedia fetch moved to client-side)
+- `lib/server/game.ts`: Server action for AI generation only (Wikipedia fetch moved to client-side)
   - Accepts `previousQuestions` parameter to avoid duplicate questions
   - Separated concerns: client fetches data, server generates AI
   - Comprehensive error messages
@@ -109,32 +110,42 @@ An infinite, personalized trivia experience where content is generated on the fl
 - [x] Comprehensive troubleshooting guides (WSL2, ngrok, networking)
 - [x] Mobile testing verified and working via ngrok tunnel
 
-### Phase 2: Specialization & UX
+### Phase 2: UX Polish & Specialization (Planned)
 - [x] **Category Selector:** Implement predefined categories (History, Science, Cinema, Geography, Sports, Literature, Art, Music) ✅ COMPLETE
 - [x] **Random Mode:** Add an "Aleatorio" button that picks a random topic from a curated list ✅ COMPLETE
+- [ ] **Haptic Engine:** Integrate `navigator.vibrate` for tactile feedback on mobile (correct/wrong answers).
+- [ ] **PWA Mastery:**
+  - [ ] Optimize `manifest.json` for standalone display.
+  - [ ] Add "Theme Color" support for mobile status bars.
+  - [ ] Service Worker setup for offline capabilities.
+- [ ] **Persistence:** Implement `lib/client/storage.ts` for local high scores and streaks using `localStorage`.
+- [ ] **Cinema Mode:** Integrate TMDB API (Client-side fetch pattern, following Wikipedia client pattern).
 - [ ] **Multi-category Session:** Allow users to select multiple categories for a mixed trivia session.
-- [ ] Integration with TMDB API for "Movie Mode".
-- [ ] PWA Manifest and Service Worker setup.
-- [ ] Haptic feedback (Vibration API) for correct/wrong answers.
-- [ ] Local scoring (localStorage).
 
-### Phase 2.5: Code Restructure (Post v0.1.0) 📋 PLANNED
-- [ ] **Modern Structure:** Restructure codebase following Next.js 14+ App Router best practices
-  - **Status:** 📋 Planned (see `docs/RESTRUCTURE_PLAN.md` for detailed plan)
-  - **Scope:**
-    - Separate server/client code into `lib/server/` and `lib/client/`
-    - Organize scripts into `scripts/` directory
-    - Group documentation guides into `docs/guides/`
-    - Extract shared types into `lib/types.ts`
-    - Update all imports and test paths
-  - **Benefits:**
-    - Clear separation of server vs client code
-    - Better organization and maintainability
-    - Aligns with modern Next.js conventions
-    - Improved scalability
-  - **Estimated Effort:** 2-3 hours
-  - **Risk Level:** Low (incremental, well-tested)
-  - **Dependencies:** None (can be done after v0.1.0 commit)
+### Phase 2.5: Structural Integrity & Restructure ✅ COMPLETE (2026-01-22)
+- [x] **Modern Directory Structure:** Executed `docs/RESTRUCTURE_PLAN.md` ✅
+  - [x] Moved server-side logic (AI, Game, Logger) to `lib/server/`
+  - [x] Moved client-side logic (Wikipedia, Fallback) to `lib/client/`
+  - [x] Created `lib/types.ts` for shared types
+  - [x] Organized scripts into `scripts/` directory
+  - [x] Grouped documentation guides into `docs/guides/`
+  - [x] Updated all imports and test paths
+- [x] **Safety Layer:** Server-only boundaries verified ✅
+  - `"use server"` directives in place for `lib/server/game.ts` and `lib/server/ai.ts`
+  - Logger only imported by server-side files
+  - No server code accidentally imported in client components
+- [x] **CI/CD Prep:** Build and tests verified ✅
+  - All 93 tests passing (100% success)
+  - Production build successful
+  - All imports resolve correctly
+  - No TypeScript errors
+- **Status:** ✅ Complete - All documentation updated to reflect new structure
+- **Benefits Achieved:**
+  - Clear separation of server vs client code
+  - Better organization and maintainability
+  - Aligns with modern Next.js 14+ conventions
+  - Improved scalability
+  - Enhanced security (API key protection)
 
 ---
 
@@ -156,8 +167,8 @@ An infinite, personalized trivia experience where content is generated on the fl
 
 **Phase 1 Requirements:**
 - ✅ Mobile-first layout with portrait mode focus (viewport configured, responsive design)
-- ✅ Wikipedia service for Spanish Wikipedia API (`lib/wikipedia-client.ts` - client-side fetch)
-- ✅ AI integration with multi-provider fallback (`lib/ai.ts`):
+- ✅ Wikipedia service for Spanish Wikipedia API (`lib/client/wikipedia-client.ts` - client-side fetch)
+- ✅ AI integration with multi-provider fallback (`lib/server/ai.ts`):
   - Gemini (2.5-flash, 3-flash-preview, 2.5-pro, 3-pro-preview) - primary
   - Groq (Llama 3.1 8B) - free fallback, very fast
   - Hugging Face (Mistral-7B) - free fallback, rate-limited
@@ -188,15 +199,15 @@ An infinite, personalized trivia experience where content is generated on the fl
 - 📋 **Planned:** Code restructure for modern Next.js 14+ conventions (see Phase 2.5)
 
 **Testing Coverage:**
-- ✅ Unit tests for Wikipedia client service (`__tests__/lib/wikipedia-client.test.ts`) - 6 test cases
-- ✅ Unit tests for AI service (`__tests__/lib/ai.test.ts`) - 15 test cases
-- ✅ Unit tests for Game service (`__tests__/lib/game.test.ts`) - 7 test cases (updated for new API)
+- ✅ Unit tests for Wikipedia client service (`__tests__/lib/client/wikipedia-client.test.ts`) - 6 test cases
+- ✅ Unit tests for AI service (`__tests__/lib/server/ai.test.ts`) - 15 test cases
+- ✅ Unit tests for Game service (`__tests__/lib/server/game.test.ts`) - 7 test cases (updated for new API)
 - ✅ Component tests for GameScreen (`__tests__/components/GameScreen.test.tsx`) - 12+ test cases (updated for timer and next question features)
 - ✅ Unit tests for Topics constants (`__tests__/constants/topics.test.ts`) - 15 test cases (category selection, randomness, structure validation)
 - ✅ Component tests for Home page (`__tests__/app/page.test.tsx`) - 8 test cases (Category selection UI and interaction tests)
 - ✅ Component tests for Home page game flow (`__tests__/app/page-gameflow.test.tsx`) - 9 test cases (Game flow, error handling, question tracking)
-- ✅ Unit tests for Logger service (`__tests__/lib/logger.test.ts`) - 11 test cases
-- ✅ Unit tests for Fallback data service (`__tests__/lib/fallback-data.test.ts`) - 6 test cases
+- ✅ Unit tests for Logger service (`__tests__/lib/server/logger.test.ts`) - 11 test cases
+- ✅ Unit tests for Fallback data service (`__tests__/lib/client/fallback-data.test.ts`) - 6 test cases
 - Test framework: Jest + React Testing Library with jsdom environment
 - Total: 93 test cases covering all core functionality and edge cases
 - Coverage: 86.23% (Statements), 72.24% (Branches), 87.5% (Functions), 87.05% (Lines)
@@ -211,7 +222,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - Spanish Wikipedia REST API (fallback)
   - English Wikipedia MediaWiki API (fallback)
   - DuckDuckGo Instant Answer API (fallback)
-- ✅ Gemini 1.5 Flash integration with JSON output (`lib/ai.ts` - enforces JSON structure)
+- ✅ Gemini 1.5 Flash integration with JSON output (`lib/server/ai.ts` - enforces JSON structure)
 - ✅ Dark-themed UI with thumb-friendly buttons (`components/GameScreen.tsx` - black bg, large buttons in bottom half)
 - ✅ 1-second feedback delay implemented (`setTimeout(() => {...}, 1000)` in GameScreen)
 - ✅ Progress bar displayed on game screen (visual progress indicator)
@@ -224,7 +235,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ Exhaustive logging system for debugging (browser console + server terminal + log file)
 - ✅ Multiple fallback data sources for reliability
 - ✅ Client-side data fetching to avoid server-side blocking
-- ✅ File logging system (`lib/logger.ts`) - Server-side operations logged to `logs/quiziai.log` with automatic rotation
+- ✅ File logging system (`lib/server/logger.ts`) - Server-side operations logged to `logs/quiziai.log` with automatic rotation
 
 ---
 
@@ -241,14 +252,14 @@ An infinite, personalized trivia experience where content is generated on the fl
 - Even with browser-like headers, server-side requests were consistently blocked
 
 **Solution Implemented:**
-1. **Client-side Wikipedia fetch** (`lib/wikipedia-client.ts`):
+1. **Client-side Wikipedia fetch** (`lib/client/wikipedia-client.ts`):
    - Moved Wikipedia API calls to client-side (browser)
    - Browser requests are less likely to be blocked (browser provides proper headers automatically)
    - Tries MediaWiki API first (better CORS support, more reliable)
    - Falls back to REST API if MediaWiki fails
    - Comprehensive logging for debugging
 
-2. **Multiple fallback data sources** (`lib/fallback-data.ts`):
+2. **Multiple fallback data sources** (`lib/client/fallback-data.ts`):
    - English Wikipedia (MediaWiki API) - first fallback
    - DuckDuckGo Instant Answer API - second fallback (no API key required)
    - Provides similar content structure for trivia generation
@@ -295,6 +306,20 @@ An infinite, personalized trivia experience where content is generated on the fl
 
 ## 🆕 Recent Updates (Latest Session)
 
+### Codebase Restructure ✅ COMPLETE (2026-01-22)
+- **Feature:** Restructured codebase following Next.js 14+ App Router best practices
+- **Implementation:**
+  - Created `lib/server/` directory for server-only code (ai.ts, game.ts, logger.ts)
+  - Created `lib/client/` directory for client-only code (wikipedia-client.ts, fallback-data.ts)
+  - Created `lib/types.ts` for shared TypeScript types
+  - Organized scripts into `scripts/` directory
+  - Grouped documentation guides into `docs/guides/` directory
+  - Updated all imports in source files and test files
+  - Updated all documentation to reflect new structure
+- **Status:** ✅ Complete - All tests passing (93/93), build successful
+- **Benefits:** Clear server/client separation, better organization, enhanced security
+- **Documentation:** All docs updated (ARCHITECTURE.md, QUICK_REFERENCE.md, PRODUCT_LOG.md, README.md, guide files)
+
 ### Git/SSH Authentication Setup ✅ NEW
 - **Feature:** SSH key-based authentication for GitHub
 - **Implementation:**
@@ -307,14 +332,14 @@ An infinite, personalized trivia experience where content is generated on the fl
 
 ### File Logging System ✅ NEW
 - **Feature:** Dual logging to both console and log file
-- **Implementation:** Created `lib/logger.ts` utility module
+- **Implementation:** Created `lib/server/logger.ts` utility module
 - **Log file location:** `logs/quiziai.log` (auto-created)
 - **Log rotation:** Automatically rotates when file exceeds 10MB
 - **Server-side only:** File logging works on server (AI operations, API calls)
 - **Client-side:** Browser console logs remain for client-side operations
 - **Integration:**
-  - Updated `lib/ai.ts` - All AI provider calls logged to file
-  - Updated `lib/game.ts` - All game flow operations logged to file
+  - Updated `lib/server/ai.ts` - All AI provider calls logged to file
+  - Updated `lib/server/game.ts` - All game flow operations logged to file
   - Module-specific loggers: `createLogger("MODULE_NAME")`
 - **Features:**
   - Timestamped entries: `[ISO timestamp] [LEVEL] message`
@@ -337,7 +362,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - All providers support JSON structured output
   - Comprehensive logging for debugging
 - **Implementation:**
-  - `lib/ai.ts`: Added `tryGroqAPI()` and `tryHuggingFaceAPI()` functions
+  - `lib/server/ai.ts`: Added `tryGroqAPI()` and `tryHuggingFaceAPI()` functions
   - Updated `generateTriviaFromContent()` with fallback chain
   - Environment variables: `GROQ_API_KEY`, `HUGGINGFACE_API_KEY`
   - Updated `.env.local.example` with all provider keys
@@ -365,8 +390,8 @@ An infinite, personalized trivia experience where content is generated on the fl
 **Implementation:**
 - `GameScreen.tsx`: Timer logic with `useCallback`, `useRef`, and proper cleanup
 - `app/page.tsx`: Question tracking state (`askedQuestions`) and next question handler
-- `lib/ai.ts`: `buildSystemPrompt()` function that includes previous questions context
-- `lib/game.ts`: Updated to accept and pass `previousQuestions` parameter
+- `lib/server/ai.ts`: `buildSystemPrompt()` function that includes previous questions context
+- `lib/server/game.ts`: Updated to accept and pass `previousQuestions` parameter
 
 **Build Status:** ✅ Production build successful
 **Test Status:** ✅ 30+ tests passing (some legacy Wikipedia tests may fail - expected, as they test deprecated server-side code)
@@ -438,16 +463,16 @@ An infinite, personalized trivia experience where content is generated on the fl
 ## 📚 Documentation & Scripts Created
 
 **Setup & Configuration:**
-- `setup-ngrok.sh` - Automated ngrok installation script
-- `ngrok-auth-setup.sh` - Helper script for ngrok authentication
-- `start-mobile-test.sh` - Combined script to start dev server + ngrok
+- `scripts/setup-ngrok.sh` - Automated ngrok installation script
+- `scripts/ngrok-auth-setup.sh` - Helper script for ngrok authentication
+- `scripts/start-mobile-test.sh` - Combined script to start dev server + ngrok
 
 **Documentation Files:**
-- `NGROK_SETUP.md` - Complete ngrok setup and usage guide
-- `QUICK_START_NGROK.md` - Quick reference for ngrok setup
-- `NGROK_TROUBLESHOOTING.md` - Diagnostic guide for ngrok issues
-- `WSL2_MOBILE_ACCESS.md` - WSL2-specific mobile access guide
-- `TROUBLESHOOTING.md` - Comprehensive troubleshooting document
+- `docs/guides/NGROK_SETUP.md` - Complete ngrok setup and usage guide
+- `docs/guides/QUICK_START_NGROK.md` - Quick reference for ngrok setup
+- `docs/guides/NGROK_TROUBLESHOOTING.md` - Diagnostic guide for ngrok issues
+- `docs/guides/WSL2_MOBILE_ACCESS.md` - WSL2-specific mobile access guide
+- `docs/guides/TROUBLESHOOTING.md` - Comprehensive troubleshooting document
 - `README.md` - Updated with mobile testing instructions
 
 **All documentation reflects current working state and verified solutions.**

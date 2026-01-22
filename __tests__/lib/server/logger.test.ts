@@ -1,4 +1,4 @@
-import { createLogger, logger, getLogFilePath, LogLevel } from "@/lib/logger";
+import { createLogger, logger, getLogFilePath, LogLevel } from "@/lib/server/logger";
 import fs from "fs";
 
 // Mock fs module

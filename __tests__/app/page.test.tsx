@@ -3,9 +3,9 @@ import Home from "@/app/page";
 import * as topicsModule from "@/constants/topics";
 
 // Mock the dependencies
-jest.mock("@/lib/wikipedia-client");
-jest.mock("@/lib/fallback-data");
-jest.mock("@/lib/game");
+jest.mock("@/lib/client/wikipedia-client");
+jest.mock("@/lib/client/fallback-data");
+jest.mock("@/lib/server/game");
 
 // Mock topics module - use actual implementation but allow spying
 jest.mock("@/constants/topics", () => {
@@ -18,9 +18,9 @@ jest.mock("@/constants/topics", () => {
 });
 
 // Mock the modules
-const mockFetchWikipediaSummaryClient = require("@/lib/wikipedia-client").fetchWikipediaSummaryClient;
-const mockFetchFallbackData = require("@/lib/fallback-data").fetchFallbackData;
-const mockGenerateTriviaFromContentServer = require("@/lib/game").generateTriviaFromContentServer;
+const mockFetchWikipediaSummaryClient = require("@/lib/client/wikipedia-client").fetchWikipediaSummaryClient;
+const mockFetchFallbackData = require("@/lib/client/fallback-data").fetchFallbackData;
+const mockGenerateTriviaFromContentServer = require("@/lib/server/game").generateTriviaFromContentServer;
 
 describe("Home Page - Category Selection", () => {
   beforeEach(() => {

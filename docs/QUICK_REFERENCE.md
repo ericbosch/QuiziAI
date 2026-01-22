@@ -20,11 +20,12 @@ Mobile-first trivia PWA that generates questions on-the-fly:
 |------|---------|------|
 | `app/page.tsx` | Main game orchestrator, state management | Client |
 | `components/GameScreen.tsx` | Game UI (timer, buttons, feedback) | Client |
-| `lib/ai.ts` | AI service (Gemini → Groq → Hugging Face) | Server |
-| `lib/game.ts` | Server action wrapper for AI | Server |
-| `lib/wikipedia-client.ts` | Wikipedia fetch (client-side) | Client |
-| `lib/fallback-data.ts` | Backup data sources | Client |
-| `lib/logger.ts` | Server-side file logging | Server |
+| `lib/server/ai.ts` | AI service (Gemini → Groq → Hugging Face) | Server |
+| `lib/server/game.ts` | Server action wrapper for AI | Server |
+| `lib/server/logger.ts` | Server-side file logging | Server |
+| `lib/client/wikipedia-client.ts` | Wikipedia fetch (client-side) | Client |
+| `lib/client/fallback-data.ts` | Backup data sources | Client |
+| `lib/types.ts` | Shared TypeScript types | Shared |
 | `constants/topics.ts` | Curated topics by category | Data |
 
 ---
@@ -34,9 +35,9 @@ Mobile-first trivia PWA that generates questions on-the-fly:
 ```
 User Input → app/page.tsx
   ↓
-Wikipedia Fetch (client) → wikipedia-client.ts
+Wikipedia Fetch (client) → lib/client/wikipedia-client.ts
   ↓
-AI Generation (server) → game.ts → ai.ts
+AI Generation (server) → lib/server/game.ts → lib/server/ai.ts
   ↓
 Display Question → GameScreen.tsx
   ↓
@@ -129,8 +130,8 @@ tail -f logs/quiziai.log
 - `docs/PRODUCT_LOG.md` - Development history
 - `README.md` - Setup & installation
 - `TEST_STATUS.md` - Test coverage details
-- `WSL2_MOBILE_ACCESS.md` - WSL2 networking
-- `QUICK_START_NGROK.md` - Ngrok setup
+- `docs/guides/WSL2_MOBILE_ACCESS.md` - WSL2 networking
+- `docs/guides/QUICK_START_NGROK.md` - Ngrok setup
 
 ---
 

@@ -1,11 +1,12 @@
-import { generateTriviaFromContent, TriviaQuestion } from "@/lib/ai";
+import { generateTriviaFromContent } from "@/lib/server/ai";
+import { TriviaQuestion } from "@/lib/types";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Mock the Google Generative AI library
 jest.mock("@google/generative-ai");
 
 // Mock logger
-jest.mock("@/lib/logger", () => ({
+jest.mock("@/lib/server/logger", () => ({
   createLogger: jest.fn(() => ({
     log: jest.fn(),
     warn: jest.fn(),

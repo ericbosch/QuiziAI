@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { TriviaQuestion } from "@/lib/ai";
+import { TriviaQuestion } from "@/lib/types";
 import { CategoryInfo } from "@/constants/topics";
 
 interface GameScreenProps {

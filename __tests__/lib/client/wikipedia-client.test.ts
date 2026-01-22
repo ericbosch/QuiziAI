@@ -1,4 +1,4 @@
-import { fetchWikipediaSummaryClient } from "@/lib/wikipedia-client";
+import { fetchWikipediaSummaryClient } from "@/lib/client/wikipedia-client";
 
 // Mock fetch globally
 global.fetch = jest.fn();

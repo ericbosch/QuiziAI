@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import GameScreen from "@/components/GameScreen";
-import { generateTriviaFromContentServer } from "@/lib/game";
-import { fetchWikipediaSummaryClient } from "@/lib/wikipedia-client";
-import { fetchFallbackData } from "@/lib/fallback-data";
-import { TriviaQuestion } from "@/lib/ai";
+import { generateTriviaFromContentServer } from "@/lib/server/game";
+import { fetchWikipediaSummaryClient } from "@/lib/client/wikipedia-client";
+import { fetchFallbackData } from "@/lib/client/fallback-data";
+import { TriviaQuestion } from "@/lib/types";
 import {
   getAllCategories,
   getRandomTopicFromCategory,

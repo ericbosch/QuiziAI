@@ -17,7 +17,7 @@ ngrok requires a free account. Follow these steps:
 **Option A: Use the automated script (easiest)**
 ```bash
 cd /home/krinekk/dev/QuiziAI
-./ngrok-auth-setup.sh
+./scripts/ngrok-auth-setup.sh
 ```
 Then paste your authtoken when prompted.
 
@@ -61,7 +61,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ```bash
 cd /home/krinekk/dev/QuiziAI
-./setup-ngrok.sh
+./scripts/setup-ngrok.sh
 ```
 
 ## Manual Usage

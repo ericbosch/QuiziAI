@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import GameScreen from "@/components/GameScreen";
-import { TriviaQuestion } from "@/lib/ai";
+import { TriviaQuestion } from "@/lib/types";
 
 const mockTrivia: TriviaQuestion = {
   question: "¿Cuál es la capital de Francia?",

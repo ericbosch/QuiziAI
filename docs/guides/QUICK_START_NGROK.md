@@ -14,7 +14,7 @@
 Run this in your terminal:
 ```bash
 cd /home/krinekk/dev/QuiziAI
-./ngrok-auth-setup.sh
+./scripts/ngrok-auth-setup.sh
 ```
 Paste your authtoken when prompted.
 

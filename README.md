@@ -187,7 +187,7 @@ If you get `ERR_EMPTY_RESPONSE`, try these steps:
    # 2. Get authtoken: https://dashboard.ngrok.com/get-started/your-authtoken
    # 3. Configure:
    cd /home/krinekk/dev/QuiziAI
-   ./ngrok-auth-setup.sh
+   ./scripts/ngrok-auth-setup.sh
    # Or manually: ngrok config add-authtoken YOUR_TOKEN
    ```
    

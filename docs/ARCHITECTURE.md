@@ -30,11 +30,14 @@ QuiziAI/
 │   └── GameScreen.tsx          # Game UI component (timer, buttons, feedback)
 │
 ├── lib/                         # Core business logic
-│   ├── ai.ts                   # AI service (multi-provider fallback)
-│   ├── game.ts                 # Server action (AI generation wrapper)
-│   ├── wikipedia-client.ts    # Client-side Wikipedia fetch (primary)
-│   ├── fallback-data.ts        # Fallback data sources (English Wiki, DuckDuckGo)
-│   └── logger.ts               # Server-side file logging utility
+│   ├── server/                  # 🆕 Server-only code
+│   │   ├── ai.ts               # AI service (multi-provider fallback)
+│   │   ├── game.ts             # Server action (AI generation wrapper)
+│   │   └── logger.ts           # Server-side file logging utility
+│   ├── client/                  # 🆕 Client-only code
+│   │   ├── wikipedia-client.ts # Client-side Wikipedia fetch (primary)
+│   │   └── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
+│   └── types.ts                # 🆕 Shared TypeScript types
 │
 ├── constants/
 │   └── topics.ts               # Curated topics by category (8 categories, 120 topics)
@@ -42,12 +45,26 @@ QuiziAI/
 ├── __tests__/                  # Test suite (93 tests, 86% coverage)
 │   ├── app/                    # Page component tests
 │   ├── components/             # Component tests
-│   ├── lib/                     # Service unit tests
-│   └── constants/               # Data structure tests
+│   ├── lib/                    # Service unit tests
+│   │   ├── server/             # Server tests
+│   │   └── client/             # Client tests
+│   └── constants/              # Data structure tests
 │
-└── docs/
+├── scripts/                     # 🆕 Build/dev scripts
+│   ├── ngrok-auth-setup.sh
+│   ├── setup-ngrok.sh
+│   └── start-mobile-test.sh
+│
+└── docs/                        # Documentation
+    ├── guides/                  # 🆕 Setup/troubleshooting guides
+    │   ├── WSL2_MOBILE_ACCESS.md
+    │   ├── NGROK_SETUP.md
+    │   ├── NGROK_TROUBLESHOOTING.md
+    │   ├── QUICK_START_NGROK.md
+    │   └── TROUBLESHOOTING.md
     ├── ARCHITECTURE.md          # This file
-    └── PRODUCT_LOG.md           # Development history and decisions
+    ├── PRODUCT_LOG.md           # Development history and decisions
+    └── QUICK_REFERENCE.md        # Quick reference card
 ```
 
 ---
@@ -62,12 +79,12 @@ QuiziAI/
 2. app/page.tsx → handleStartGame()
    ↓
 3. Fetch content (client-side):
-   - wikipedia-client.ts → MediaWiki API (primary)
+   - lib/client/wikipedia-client.ts → MediaWiki API (primary)
    - If fails → REST API fallback
-   - If fails → fallback-data.ts → English Wiki / DuckDuckGo
+   - If fails → lib/client/fallback-data.ts → English Wiki / DuckDuckGo
    ↓
 4. Send content to AI (server-side):
-   - game.ts (server action) → ai.ts
+   - lib/server/game.ts (server action) → lib/server/ai.ts
    - ai.ts tries: Gemini → Groq → Hugging Face
    - Returns TriviaQuestion JSON
    ↓
@@ -80,15 +97,15 @@ QuiziAI/
 
 ### Key Architectural Decisions
 
-1. **Client-side data fetching** (`wikipedia-client.ts`)
+1. **Client-side data fetching** (`lib/client/wikipedia-client.ts`)
    - **Why:** Avoids server-side blocking (Wikipedia 403 errors)
    - **How:** Browser makes direct API calls with CORS
 
-2. **Server-side AI generation** (`game.ts` + `ai.ts`)
+2. **Server-side AI generation** (`lib/server/game.ts` + `lib/server/ai.ts`)
    - **Why:** API keys must stay server-side (security)
    - **How:** Next.js server actions ("use server")
 
-3. **Multi-provider fallback** (`ai.ts`)
+3. **Multi-provider fallback** (`lib/server/ai.ts`)
    - **Why:** Free tiers have quota limits
    - **How:** Try Gemini → Groq → Hugging Face sequentially
 
@@ -138,7 +155,7 @@ QuiziAI/
   - Category display in header
   - Progress bar
 
-### `lib/ai.ts` (AI Service)
+### `lib/server/ai.ts` (AI Service)
 - **Type:** Server-side only ("use server")
 - **Exports:**
   - `TriviaQuestion` interface
@@ -153,13 +170,13 @@ QuiziAI/
   - `parseTriviaResponse(text)`: JSON extraction (handles markdown)
   - `tryGroqAPI()` / `tryHuggingFaceAPI()`: Fallback implementations
 
-### `lib/game.ts` (Server Action Wrapper)
+### `lib/server/game.ts` (Server Action Wrapper)
 - **Type:** Server action ("use server")
 - **Purpose:** Wrapper around `ai.ts` for Next.js server actions
 - **Function:** `generateTriviaFromContentServer(content, previousQuestions)`
 - **Returns:** `{ trivia: TriviaQuestion | null, error: string | null }`
 
-### `lib/wikipedia-client.ts` (Data Fetching)
+### `lib/client/wikipedia-client.ts` (Data Fetching)
 - **Type:** Client-side function
 - **Function:** `fetchWikipediaSummaryClient(topic)`
 - **Fallback Chain:**
@@ -167,7 +184,7 @@ QuiziAI/
   2. Spanish Wikipedia REST API
 - **Returns:** `{ title: string, extract: string } | null`
 
-### `lib/fallback-data.ts` (Backup Data Sources)
+### `lib/client/fallback-data.ts` (Backup Data Sources)
 - **Type:** Client-side function
 - **Function:** `fetchFallbackData(topic)`
 - **Fallback Chain:**
@@ -175,7 +192,7 @@ QuiziAI/
   2. DuckDuckGo Instant Answer API
 - **Returns:** `{ title: string, extract: string } | null`
 
-### `lib/logger.ts` (Server-Side Logging)
+### `lib/server/logger.ts` (Server-Side Logging)
 - **Type:** Server-side utility
 - **Purpose:** Dual logging (console + file)
 - **Features:**
@@ -269,11 +286,11 @@ QuiziAI/
 - `__tests__/app/page.test.tsx`: Category selection UI (8 tests)
 - `__tests__/app/page-gameflow.test.tsx`: Game flow logic (9 tests)
 - `__tests__/components/GameScreen.test.tsx`: UI interactions (12+ tests)
-- `__tests__/lib/ai.test.ts`: AI service + fallback logic (15 tests)
-- `__tests__/lib/game.test.ts`: Server action wrapper (7 tests)
-- `__tests__/lib/wikipedia-client.test.ts`: Data fetching (6 tests)
-- `__tests__/lib/fallback-data.test.ts`: Fallback sources (6 tests)
-- `__tests__/lib/logger.test.ts`: Logging utility (11 tests)
+- `__tests__/lib/server/ai.test.ts`: AI service + fallback logic (15 tests)
+- `__tests__/lib/server/game.test.ts`: Server action wrapper (7 tests)
+- `__tests__/lib/server/logger.test.ts`: Logging utility (11 tests)
+- `__tests__/lib/client/wikipedia-client.test.ts`: Data fetching (6 tests)
+- `__tests__/lib/client/fallback-data.test.ts`: Fallback sources (6 tests)
 - `__tests__/constants/topics.test.ts`: Data structure (15 tests)
 
 ### Testing Patterns
@@ -288,7 +305,7 @@ QuiziAI/
 
 ### Adding a New AI Provider
 
-1. **Add function in `lib/ai.ts`:**
+1. **Add function in `lib/server/ai.ts`:**
    ```typescript
    async function tryNewProviderAPI(prompt: string): Promise<TriviaQuestion | null> {
      const apiKey = process.env.NEW_PROVIDER_API_KEY;
@@ -305,7 +322,7 @@ QuiziAI/
 
 3. **Update `.env.local.example`** with new API key
 
-4. **Add tests in `__tests__/lib/ai.test.ts`**
+4. **Add tests in `__tests__/lib/server/ai.test.ts`**
 
 ### Adding a New Category
 
@@ -318,9 +335,9 @@ QuiziAI/
 
 ### Modifying Question Format
 
-1. **Update `TriviaQuestion` interface in `lib/ai.ts`**
-2. **Update `buildSystemPrompt()` in `lib/ai.ts`**
-3. **Update `parseTriviaResponse()` in `lib/ai.ts`**
+1. **Update `TriviaQuestion` interface in `lib/types.ts` (or `lib/server/ai.ts`)**
+2. **Update `buildSystemPrompt()` in `lib/server/ai.ts`**
+3. **Update `parseTriviaResponse()` in `lib/server/ai.ts`**
 4. **Update `GameScreen.tsx` to display new fields**
 5. **Update all tests that use `TriviaQuestion`**
 
@@ -333,8 +350,8 @@ QuiziAI/
 
 ### Testing on Mobile
 
-1. **Option 1 (WSL2):** Use `netsh` port forwarding (see `WSL2_MOBILE_ACCESS.md`)
-2. **Option 2 (Recommended):** Use ngrok (see `QUICK_START_NGROK.md`)
+1. **Option 1 (WSL2):** Use `netsh` port forwarding (see `docs/guides/WSL2_MOBILE_ACCESS.md`)
+2. **Option 2 (Recommended):** Use ngrok (see `docs/guides/QUICK_START_NGROK.md`)
    ```bash
    npm run dev:tunnel
    ```
@@ -346,8 +363,9 @@ QuiziAI/
 1. **State Update Delay:** React state updates are async. Use `categoryOverride` parameter in `handleStartGame()` to bypass delay.
 
 2. **Server vs Client:** 
-   - `lib/ai.ts`, `lib/game.ts`, `lib/logger.ts` are server-only
-   - `lib/wikipedia-client.ts`, `lib/fallback-data.ts` are client-only
+   - `lib/server/ai.ts`, `lib/server/game.ts`, `lib/server/logger.ts` are server-only
+   - `lib/client/wikipedia-client.ts`, `lib/client/fallback-data.ts` are client-only
+   - `lib/types.ts` contains shared types (re-exports from server/client modules)
    - `app/page.tsx` is client component (uses hooks)
 
 3. **API Key Security:** Never expose API keys in client code. All AI calls must go through server actions.
@@ -377,8 +395,8 @@ QuiziAI/
 - **docs/PRODUCT_LOG.md:** Development history, decisions, roadmap
 - **TEST_STATUS.md:** Current test coverage and results
 - **CHANGELOG.md:** Version history
-- **WSL2_MOBILE_ACCESS.md:** WSL2 networking setup
-- **QUICK_START_NGROK.md:** Quick ngrok setup guide
+- **docs/guides/WSL2_MOBILE_ACCESS.md:** WSL2 networking setup
+- **docs/guides/QUICK_START_NGROK.md:** Quick ngrok setup guide
 
 ---
 

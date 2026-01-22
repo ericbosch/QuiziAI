@@ -1,8 +1,8 @@
-import { generateTriviaFromContentServer } from "@/lib/game";
-import { generateTriviaFromContent } from "@/lib/ai";
+import { generateTriviaFromContentServer } from "@/lib/server/game";
+import { generateTriviaFromContent } from "@/lib/server/ai";
 
 // Mock dependencies
-jest.mock("@/lib/ai");
+jest.mock("@/lib/server/ai");
 
 describe("Game Service", () => {
   beforeEach(() => {
