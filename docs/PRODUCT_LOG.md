@@ -133,7 +133,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - [ ] **Multi-category Session:** Allow users to select multiple categories for a mixed trivia session.
 
 ### Phase 2.5: Structural Integrity & Restructure ✅ COMPLETE (2026-01-22)
-- [x] **Modern Directory Structure:** Executed `docs/RESTRUCTURE_PLAN.md` ✅
+- [x] **Modern Directory Structure:** Restructure completed ✅
   - [x] Moved server-side logic (AI, Game, Logger) to `lib/server/`
   - [x] Moved client-side logic (Wikipedia, Fallback) to `lib/client/`
   - [x] Created `lib/types.ts` for shared types
