@@ -9,8 +9,10 @@
 Mobile-first trivia PWA that generates questions on-the-fly:
 1. User selects topic/category
 2. Fetch content from Wikipedia (client-side)
-3. Generate trivia with AI (server-side, multi-provider fallback)
-4. Display question, handle answer, repeat
+3. Generate batch of 10 questions with AI (server-side, multi-provider fallback)
+4. Queue questions, dequeue one at a time
+5. Display question, handle answer, repeat
+6. Pre-fetch next batch when queue ≤2 questions
 
 ---
 
@@ -18,15 +20,17 @@ Mobile-first trivia PWA that generates questions on-the-fly:
 
 | File | Purpose | Type |
 |------|---------|------|
-| `app/page.tsx` | Main game orchestrator, state management, cache usage | Client |
+| `app/page.tsx` | Main game orchestrator, state management, queue-based batching | Client |
 | `components/GameScreen.tsx` | Game UI (timer, buttons, feedback) | Client |
 | `components/ErrorNotification.tsx` | Popup for API failures (e.g. rate limit) | Client |
-| `lib/server/ai.ts` | AI service (Gemini → Groq → Hugging Face) | Server |
+| `lib/server/ai/index.ts` | AI orchestrator (provider fallback chain) | Server |
+| `lib/server/ai/prompt-builder.ts` | Unified prompt builder for all providers | Server |
+| `lib/server/ai/providers/` | AI provider implementations (Gemini, Groq, HF) | Server |
 | `lib/server/game.ts` | Server action (AI + batch generation) | Server |
-| `lib/server/logger.ts` | Server-side file logging | Server |
+| `lib/server/logger.ts` | Server-side file logging (dev only, console in production) | Server |
 | `lib/client/wikipedia-client.ts` | Wikipedia fetch (client-side) | Client |
 | `lib/client/fallback-data.ts` | Backup data sources | Client |
-| `lib/client/question-cache.ts` | In-memory cache for pre-generated questions | Client |
+| `lib/client/question-cache.ts` | In-memory cache utility (legacy, replaced by queue) | Client |
 | `lib/types.ts` | Shared TypeScript types | Shared |
 | `constants/topics.ts` | Curated topics by category | Data |
 
@@ -58,7 +62,9 @@ User Answer → Next Question (repeat)
 - `trivia`: Current question data
 - `score`: `{ correct: number, total: number }`
 - `notificationError`: Current API error for ErrorNotification
-- `questionCacheRef`: Ref to QuestionCache instance
+- `questionsQueue`: State array of queued questions
+- `questionsQueueRef`: Ref for async queue access
+- `answerHistory`: Array of boolean (correct/incorrect) for progress bar
 
 ---
 
@@ -173,4 +179,4 @@ tail -f logs/quiziai.log
 
 ---
 
-**Last Updated:** 2026-01-22 (batch/cache/errors)
+**Last Updated:** 2026-01-23 (Core Refinement Plan complete) (production optimizations: queue-based batching, segmented progress bar)

@@ -6,7 +6,7 @@
  */
 
 // Re-export TriviaQuestion from server module
-export type { TriviaQuestion } from "./server/ai";
+export type { TriviaQuestion } from "./server/ai/index";
 
 // Re-export WikipediaSummary from client module
 export type { WikipediaSummary } from "./client/wikipedia-client";

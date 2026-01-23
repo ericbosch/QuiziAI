@@ -1,6 +1,6 @@
 "use server";
 
-import { generateTriviaFromContent, TriviaQuestion } from "./ai";
+import { generateTriviaFromContent, TriviaQuestion } from "./ai/index";
 import { createLogger } from "./logger";
 
 const logger = createLogger("AI");
@@ -30,10 +30,20 @@ export async function generateTriviaFromContentServer(
     }
 
     logger.log("📤 [AI] Calling generateTriviaFromContent...");
-    // Generate trivia from content with previous questions context
-    const trivia = await generateTriviaFromContent(content.trim(), previousQuestions, previousAnswerIndices);
+    // Generate trivia from content with previous questions context (single question)
+    const result = await generateTriviaFromContent(content.trim(), previousQuestions, previousAnswerIndices, 1);
 
     logger.log("📥 [AI] generateTriviaFromContent returned");
+    
+    // Handle single question response
+    let trivia: TriviaQuestion | null = null;
+    if (Array.isArray(result)) {
+      // Should not happen when questionCount=1, but handle it
+      trivia = result[0] || null;
+    } else {
+      trivia = result;
+    }
+
     logger.log("📊 [AI] Trivia exists:", !!trivia);
 
     if (!trivia) {
@@ -88,7 +98,7 @@ export async function generateTriviaFromContentServer(
 }
 
 /**
- * Generate multiple questions in batch for caching
+ * Generate multiple questions in batch - TRUE BATCHING (single API call)
  */
 export async function generateTriviaBatch(
   content: string,
@@ -96,51 +106,82 @@ export async function generateTriviaBatch(
   previousQuestions: string[] = [],
   previousAnswerIndices: number[] = []
 ): Promise<{ questions: TriviaQuestion[]; errors: string[] }> {
-  logger.log(`🔄 [AI] Generating batch of ${count} questions`);
+  logger.log(`🔄 [AI] Generating batch of ${count} questions in SINGLE API call`);
   const questions: TriviaQuestion[] = [];
   const errors: string[] = [];
 
-  let currentQuestions = [...previousQuestions];
-  let currentIndices = [...previousAnswerIndices];
+  try {
+    // Try to generate all questions in a single API call
+    const batchResult = await generateTriviaFromContent(
+      content,
+      previousQuestions,
+      previousAnswerIndices,
+      count
+    );
 
-  for (let i = 0; i < count; i++) {
-    try {
-      const result = await generateTriviaFromContentServer(
-        content,
-        currentQuestions,
-        currentIndices
-      );
-
-      if (result.trivia) {
-        // Check for duplicates
-        const isDuplicate = currentQuestions.some(
-          (q) => q.toLowerCase().trim() === result.trivia!.question.toLowerCase().trim()
+    if (Array.isArray(batchResult)) {
+      // Batch response - multiple questions in one call
+      logger.log(`✅ [AI] Received ${batchResult.length} questions in single batch`);
+      
+      // Filter duplicates and validate
+      for (const trivia of batchResult) {
+        const isDuplicate = previousQuestions.some(
+          (q) => q.toLowerCase().trim() === trivia.question.toLowerCase().trim()
         );
 
         if (!isDuplicate) {
-          questions.push(result.trivia);
-          currentQuestions.push(result.trivia.question);
-          currentIndices.push(result.trivia.correctAnswerIndex);
+          questions.push(trivia);
         } else {
-          logger.warn(`⚠️ [AI] Duplicate question in batch, skipping`);
+          logger.warn(`⚠️ [AI] Duplicate question in batch, skipping: ${trivia.question.substring(0, 50)}`);
           errors.push("Duplicate question skipped");
         }
-      } else if (result.error) {
-        errors.push(result.error);
-        // If rate limited, stop trying
-        if (result.error === "RATE_LIMIT") {
-          logger.warn("⚠️ [AI] Rate limit hit, stopping batch generation");
+      }
+    } else if (batchResult) {
+      // Single question response (fallback)
+      logger.log("⚠️ [AI] Received single question instead of batch, using it");
+      questions.push(batchResult);
+    } else {
+      errors.push("Failed to generate batch");
+    }
+  } catch (error) {
+    logger.error(`❌ [AI] Error generating batch:`, error);
+    errors.push(error instanceof Error ? error.message : "Unknown error");
+    
+    // Fallback: try generating questions one by one if batch fails
+    logger.warn("⚠️ [AI] Batch generation failed, falling back to sequential generation");
+    let currentQuestions = [...previousQuestions];
+    let currentIndices = [...previousAnswerIndices];
+    
+    for (let i = 0; i < count && questions.length < count; i++) {
+      try {
+        const result = await generateTriviaFromContentServer(
+          content,
+          currentQuestions,
+          currentIndices
+        );
+
+        if (result.trivia) {
+          const isDuplicate = currentQuestions.some(
+            (q) => q.toLowerCase().trim() === result.trivia!.question.toLowerCase().trim()
+          );
+
+          if (!isDuplicate) {
+            questions.push(result.trivia);
+            currentQuestions.push(result.trivia.question);
+            currentIndices.push(result.trivia.correctAnswerIndex);
+          }
+        } else if (result.error === "RATE_LIMIT") {
+          logger.warn(`⚠️ [AI] Rate limit hit after ${questions.length} questions`);
           break;
         }
-      }
 
-      // Small delay between requests to avoid overwhelming the API
-      if (i < count - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay between requests
+        if (i < count - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (err) {
+        logger.error(`❌ [AI] Error generating question ${i + 1} in fallback:`, err);
       }
-    } catch (error) {
-      logger.error(`❌ [AI] Error generating question ${i + 1} in batch:`, error);
-      errors.push(error instanceof Error ? error.message : "Unknown error");
     }
   }
 

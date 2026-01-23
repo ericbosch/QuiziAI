@@ -6,7 +6,6 @@ import ErrorNotification from "@/components/ErrorNotification";
 import { generateTriviaFromContentServer, generateTriviaBatch } from "@/lib/server/game";
 import { fetchWikipediaSummaryClient } from "@/lib/client/wikipedia-client";
 import { fetchFallbackData } from "@/lib/client/fallback-data";
-import { QuestionCache } from "@/lib/client/question-cache";
 import { TriviaQuestion } from "@/lib/types";
 import {
   getAllCategories,
@@ -27,50 +26,69 @@ export default function Home() {
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]); // Track asked questions
   const [previousAnswerIndices, setPreviousAnswerIndices] = useState<number[]>([]); // Track answer indices for diversity
   const [notificationError, setNotificationError] = useState<string | null>(null); // Error for notification popup
+  const [questionsQueue, setQuestionsQueue] = useState<TriviaQuestion[]>([]); // Queue for batch-loaded questions
+  const [answerHistory, setAnswerHistory] = useState<boolean[]>([]); // Track answer history for progress bar
+  const [loadingMessage, setLoadingMessage] = useState<string>(""); // Dynamic loading message
   // Use refs to always get latest values for async operations
   const askedQuestionsRef = useRef<string[]>([]);
   const previousAnswerIndicesRef = useRef<number[]>([]);
-  const questionCacheRef = useRef<QuestionCache>(new QuestionCache(5, 20)); // Cache for questions (min: 5, target: 20)
-  const currentContentRef = useRef<string>(""); // Store current content for cache refill
-  const isRefillingCacheRef = useRef<boolean>(false); // Prevent multiple refills
+  const questionsQueueRef = useRef<TriviaQuestion[]>([]); // Ref for queue access in async operations
+  const currentContentRef = useRef<string>(""); // Store current content for batch fetching
+  const isFetchingBatchRef = useRef<boolean>(false); // Prevent multiple batch fetches
+  const loadingMessageIntervalRef = useRef<NodeJS.Timeout | null>(null); // Interval for rotating messages
+  const BATCH_SIZE = 10; // Batch size for question loading
+  const PRE_FETCH_THRESHOLD = 2; // Pre-fetch when queue has 2 questions left (at question index 8)
 
-  // Refill cache in background
-  const refillCache = async (content: string) => {
-    if (isRefillingCacheRef.current) return;
-    isRefillingCacheRef.current = true;
+  // Spanish loading messages
+  const LOADING_MESSAGES = [
+    "Consultando la Biblioteca de Alejandría...",
+    "Interrogando a la IA sobre {category}...",
+    "Limpiando el polvo de los libros...",
+    "Sincronizando neuronas artificiales...",
+  ];
+
+  // Sync ref with state
+  useEffect(() => {
+    questionsQueueRef.current = questionsQueue;
+  }, [questionsQueue]);
+
+  // Pre-fetch batch when queue is low
+  const preFetchBatch = async (content: string) => {
+    if (isFetchingBatchRef.current) return;
+    isFetchingBatchRef.current = true;
 
     try {
-      const targetSize = questionCacheRef.current.getTargetSize();
-      const currentSize = questionCacheRef.current.size();
-      const needed = Math.max(0, targetSize - currentSize);
+      console.log(`🔄 [QUEUE] Pre-fetching batch of ${BATCH_SIZE} questions`);
+      const batch = await generateTriviaBatch(
+        content,
+        BATCH_SIZE,
+        askedQuestionsRef.current,
+        previousAnswerIndicesRef.current
+      );
 
-      if (needed > 0) {
-        console.log(`🔄 [CACHE] Refilling cache: ${needed} questions needed`);
-        const batch = await generateTriviaBatch(
-          content,
-          needed,
-          askedQuestionsRef.current,
-          previousAnswerIndicesRef.current
-        );
+      if (batch.questions.length > 0) {
+        // Add to queue
+        setQuestionsQueue((prev) => {
+          const updated = [...prev, ...batch.questions];
+          questionsQueueRef.current = updated;
+          console.log(`✅ [QUEUE] Added ${batch.questions.length} questions to queue (total: ${updated.length})`);
+          return updated;
+        });
+      }
 
-        if (batch.questions.length > 0) {
-          questionCacheRef.current.pushMany(batch.questions);
-          console.log(`✅ [CACHE] Added ${batch.questions.length} questions to cache`);
-        }
-
-        if (batch.errors.some(e => e === "RATE_LIMIT")) {
-          setNotificationError("RATE_LIMIT");
-        }
+      if (batch.errors.some(e => e === "RATE_LIMIT")) {
+        setNotificationError("RATE_LIMIT");
       }
     } catch (error) {
-      console.error("❌ [CACHE] Error refilling cache:", error);
+      console.error("❌ [QUEUE] Error pre-fetching batch:", error);
     } finally {
-      isRefillingCacheRef.current = false;
+      isFetchingBatchRef.current = false;
     }
   };
 
 
   const handleStartGame = async (topicToUse?: string, categoryOverride?: Category | null) => {
+    console.log("🎮 [GAME] handleStartGame called", { topicToUse, categoryOverride, selectedCategory });
     let topicForGame: string;
 
     // Use categoryOverride if provided (for immediate use), otherwise use state
@@ -79,18 +97,33 @@ export default function Home() {
     // If category is selected, always pick a random topic from that category
     if (categoryToUse) {
       topicForGame = getRandomTopicFromCategory(categoryToUse);
+      console.log("🎮 [GAME] Category selected, random topic:", topicForGame);
     } else {
       // Use provided topic or fallback to input field
       topicForGame = String(topicToUse || topic || "");
+      console.log("🎮 [GAME] Manual topic:", topicForGame);
     }
 
     if (!topicForGame.trim()) {
+      console.warn("⚠️ [GAME] No topic provided, returning early");
       return;
     }
 
     setLoading(true);
     setError(null);
     setCurrentTopic(topicForGame); // Store topic for current question
+    
+    // Start rotating loading messages
+    let messageIndex = 0;
+    const categoryName = categoryToUse ? getCategoryById(categoryToUse)?.name || "" : "";
+    const updateLoadingMessage = () => {
+      const baseMessage = LOADING_MESSAGES[messageIndex % LOADING_MESSAGES.length];
+      const message = baseMessage.replace("{category}", categoryName || "el tema");
+      setLoadingMessage(message);
+      messageIndex++;
+    };
+    updateLoadingMessage(); // Show first message immediately
+    loadingMessageIntervalRef.current = setInterval(updateLoadingMessage, 2000); // Rotate every 2 seconds
 
     try {
       // Try Wikipedia first (client-side)
@@ -112,33 +145,56 @@ export default function Home() {
         console.error("❌ [GAME] No data found from any source");
         setError("No se encontró información sobre este tema. Intenta con otro tema o verifica tu conexión.");
         setLoading(false);
+        if (loadingMessageIntervalRef.current) {
+          clearInterval(loadingMessageIntervalRef.current);
+          loadingMessageIntervalRef.current = null;
+        }
+        setLoadingMessage("");
         return;
       }
 
-      // Store content for cache refilling
+      // Store content for batch fetching
       currentContentRef.current = summary.extract;
 
-      // Check cache first
-      let cachedQuestion = questionCacheRef.current.pop();
+      // Check queue first - dequeue a question
+      let questionFromQueue: TriviaQuestion | null = null;
+      if (questionsQueueRef.current.length > 0) {
+        questionFromQueue = questionsQueueRef.current[0];
+        // Remove from queue (dequeue)
+        setQuestionsQueue((prev) => {
+          const updated = prev.slice(1); // Remove first element
+          questionsQueueRef.current = updated;
+          console.log(`📥 [QUEUE] Dequeued question (remaining: ${updated.length})`);
+          return updated;
+        });
+      }
 
-      // If cache is empty or low, generate a batch immediately
-      if (!cachedQuestion || questionCacheRef.current.needsRefill()) {
-        console.log("🔄 [GAME] Cache empty/low, generating batch...");
-        const batchSize = questionCacheRef.current.isEmpty() ? 20 : 15; // Generate 20 if empty, 15 if low
+      // If queue is empty, fetch a batch immediately
+      if (!questionFromQueue) {
+        console.log("🔄 [GAME] Queue empty, fetching initial batch...");
         const batch = await generateTriviaBatch(
           summary.extract,
-          batchSize,
+          BATCH_SIZE,
           askedQuestionsRef.current,
           previousAnswerIndicesRef.current
         );
 
         if (batch.questions.length > 0) {
-          // Add all questions to cache
-          questionCacheRef.current.pushMany(batch.questions);
-          console.log(`✅ [GAME] Generated ${batch.questions.length} questions, added to cache`);
+          // Add to queue
+          setQuestionsQueue((prev) => {
+            const updated = [...prev, ...batch.questions];
+            questionsQueueRef.current = updated;
+            console.log(`✅ [GAME] Generated ${batch.questions.length} questions, added to queue`);
+            return updated;
+          });
 
-          // Get first question from cache
-          cachedQuestion = questionCacheRef.current.pop();
+          // Dequeue first question
+          questionFromQueue = batch.questions[0];
+          setQuestionsQueue((prev) => {
+            const updated = prev.slice(1);
+            questionsQueueRef.current = updated;
+            return updated;
+          });
 
           // Handle rate limit errors
           if (batch.errors.some(e => e === "RATE_LIMIT")) {
@@ -162,118 +218,127 @@ export default function Home() {
               setError(result.error);
             }
             setLoading(false);
+            if (loadingMessageIntervalRef.current) {
+              clearInterval(loadingMessageIntervalRef.current);
+              loadingMessageIntervalRef.current = null;
+            }
+            setLoadingMessage("");
             return;
           }
 
           if (result.trivia) {
-            cachedQuestion = result.trivia;
-          } else {
-            setError("No se pudo generar la trivia. Intenta de nuevo.");
-            setLoading(false);
-            return;
-          }
+            questionFromQueue = result.trivia;
+            } else {
+              setError("No se pudo generar la trivia. Intenta de nuevo.");
+              setLoading(false);
+              if (loadingMessageIntervalRef.current) {
+                clearInterval(loadingMessageIntervalRef.current);
+                loadingMessageIntervalRef.current = null;
+              }
+              setLoadingMessage("");
+              return;
+            }
         }
       }
 
-      // Use cached question
-      if (cachedQuestion) {
-        const isDuplicate = askedQuestionsRef.current.some(
-          (q) => q.toLowerCase().trim() === cachedQuestion!.question.toLowerCase().trim()
-        );
+      // Check for duplicates and find a valid question
+      if (questionFromQueue) {
+        // Loop until we find a non-duplicate question
+        let attempts = 0;
+        const maxAttempts = 20; // Prevent infinite loops
+        
+        while (attempts < maxAttempts) {
+          const isDuplicate = askedQuestionsRef.current.some(
+            (q) => q.toLowerCase().trim() === questionFromQueue!.question.toLowerCase().trim()
+          );
 
-        if (!isDuplicate) {
-          const newQuestions = [...askedQuestionsRef.current, cachedQuestion.question];
-          const newIndices = [...previousAnswerIndicesRef.current, cachedQuestion.correctAnswerIndex];
-          setAskedQuestions(newQuestions);
-          setPreviousAnswerIndices(newIndices);
-          askedQuestionsRef.current = newQuestions;
-          previousAnswerIndicesRef.current = newIndices;
-          setTrivia(cachedQuestion);
-          setLoading(false);
-
-          // Refill cache in background if needed (when below 5 questions)
-          if (questionCacheRef.current.needsRefill() && !isRefillingCacheRef.current) {
-            refillCache(summary.extract);
+          if (!isDuplicate) {
+            // Found a valid non-duplicate question
+            break;
           }
-          return;
-        } else {
-          // Duplicate found, try cache again
-          console.warn("⚠️ [GAME] Duplicate question from cache, trying next...");
-          const nextCached = questionCacheRef.current.pop();
-          if (nextCached) {
-            cachedQuestion = nextCached;
+
+          // Duplicate found, try next question from queue
+          console.warn(`⚠️ [GAME] Duplicate question (attempt ${attempts + 1}), trying next...`);
+          
+          if (questionsQueueRef.current.length > 0) {
+            questionFromQueue = questionsQueueRef.current[0];
+            setQuestionsQueue((prev) => {
+              const updated = prev.slice(1);
+              questionsQueueRef.current = updated;
+              return updated;
+            });
+            attempts++;
           } else {
-            // Cache exhausted, need to generate more
-            console.warn("⚠️ [GAME] Cache exhausted, generating new batch...");
+            // Queue exhausted, fetch new batch
+            console.warn("⚠️ [GAME] Queue exhausted, fetching new batch...");
             const batch = await generateTriviaBatch(
               summary.extract,
-              10,
+              BATCH_SIZE,
               askedQuestionsRef.current,
               previousAnswerIndicesRef.current
             );
 
             if (batch.questions.length > 0) {
-              questionCacheRef.current.pushMany(batch.questions);
-              cachedQuestion = questionCacheRef.current.pop();
+              setQuestionsQueue((prev) => {
+                const updated = [...prev, ...batch.questions];
+                questionsQueueRef.current = updated;
+                return updated;
+              });
+              questionFromQueue = batch.questions[0];
+              setQuestionsQueue((prev) => {
+                const updated = prev.slice(1);
+                questionsQueueRef.current = updated;
+                return updated;
+              });
+              attempts++;
+            } else {
+              setError("No se pudo generar una pregunta válida. Intenta con otro tema.");
+              setLoading(false);
+              if (loadingMessageIntervalRef.current) {
+                clearInterval(loadingMessageIntervalRef.current);
+                loadingMessageIntervalRef.current = null;
+              }
+              setLoadingMessage("");
+              return;
             }
           }
         }
-      }
 
-      // Fallback: if we still don't have a question, show error
-      if (!cachedQuestion) {
-        console.error("❌ [GAME] Could not generate any questions");
-        setError("No se pudo generar la trivia. Intenta de nuevo.");
-        setLoading(false);
-        return;
-      }
+        // If we still have a duplicate after max attempts, use it anyway (better than nothing)
+        if (attempts >= maxAttempts && questionFromQueue) {
+          console.warn("⚠️ [GAME] Max attempts reached, using question despite potential duplicate");
+        }
 
-      // Final check: use the cached question we found
-      let finalQuestion = cachedQuestion;
-      const isDuplicate = askedQuestionsRef.current.some(
-        (q) => q.toLowerCase().trim() === finalQuestion.question.toLowerCase().trim()
-      );
-
-      if (isDuplicate) {
-        // Last resort: try generating a small batch
-        console.warn("⚠️ [GAME] All cached questions are duplicates, generating emergency batch...");
-        const emergencyBatch = await generateTriviaBatch(
-          summary.extract,
-          5,
-          askedQuestionsRef.current,
-          previousAnswerIndicesRef.current
-        );
-
-        if (emergencyBatch.questions.length > 0) {
-          questionCacheRef.current.pushMany(emergencyBatch.questions);
-          const freshQuestion = questionCacheRef.current.pop();
-          if (freshQuestion) {
-            finalQuestion = freshQuestion;
-          } else {
-            setError("No se pudo generar una pregunta válida. Intenta con otro tema.");
-            setLoading(false);
-            return;
-          }
-        } else {
-          setError("No se pudo generar una pregunta válida. Intenta con otro tema.");
+        // Use the question
+        if (questionFromQueue) {
+          const newQuestions = [...askedQuestionsRef.current, questionFromQueue.question];
+          const newIndices = [...previousAnswerIndicesRef.current, questionFromQueue.correctAnswerIndex];
+          setAskedQuestions(newQuestions);
+          setPreviousAnswerIndices(newIndices);
+          askedQuestionsRef.current = newQuestions;
+          previousAnswerIndicesRef.current = newIndices;
+          setTrivia(questionFromQueue);
           setLoading(false);
+          // Stop loading messages
+          if (loadingMessageIntervalRef.current) {
+            clearInterval(loadingMessageIntervalRef.current);
+            loadingMessageIntervalRef.current = null;
+          }
+          setLoadingMessage("");
+
+          // Pre-fetch next batch if queue is low (2 or fewer questions)
+          if (questionsQueueRef.current.length <= PRE_FETCH_THRESHOLD && !isFetchingBatchRef.current) {
+            preFetchBatch(summary.extract);
+          }
           return;
         }
       }
 
-      // Use the question (should be valid at this point)
-      const newQuestions = [...askedQuestionsRef.current, finalQuestion.question];
-      const newIndices = [...previousAnswerIndicesRef.current, finalQuestion.correctAnswerIndex];
-      setAskedQuestions(newQuestions);
-      setPreviousAnswerIndices(newIndices);
-      askedQuestionsRef.current = newQuestions;
-      previousAnswerIndicesRef.current = newIndices;
-      setTrivia(finalQuestion);
-
-      // Refill cache in background if needed
-      if (questionCacheRef.current.needsRefill() && !isRefillingCacheRef.current) {
-        refillCache(summary.extract);
-      }
+      // Fallback: if we still don't have a question, show error
+      console.error("❌ [GAME] Could not generate any questions");
+      setError("No se pudo generar la trivia. Intenta de nuevo.");
+      setLoading(false);
+      return;
     } catch (error) {
       console.error("💥 [GAME] Exception caught in handleStartGame:", error);
       if (error instanceof Error) {
@@ -281,9 +346,13 @@ export default function Home() {
         console.error("💥 [GAME] Error stack:", error.stack);
       }
       setError(`Error al cargar la trivia: ${error instanceof Error ? error.message : "Error desconocido"}`);
+      setLoading(false);
+      if (loadingMessageIntervalRef.current) {
+        clearInterval(loadingMessageIntervalRef.current);
+        loadingMessageIntervalRef.current = null;
+      }
+      setLoadingMessage("");
     }
-
-    setLoading(false);
   };
 
   const handleAnswer = (isCorrect: boolean) => {
@@ -291,13 +360,180 @@ export default function Home() {
       correct: prev.correct + (isCorrect ? 1 : 0),
       total: prev.total + 1,
     }));
+    // Track answer history for progress bar
+    setAnswerHistory((prev) => [...prev, isCorrect]);
     // Note: Next question is now handled by GameScreen timer/button
   };
 
   const handleNextQuestion = async () => {
-    // handleStartGame will automatically pick random topic from category if selected
-    // or use current topic if no category is selected
-    await handleStartGame();
+    console.log("🔄 [GAME] handleNextQuestion called");
+    console.log("📊 [GAME] Queue size:", questionsQueueRef.current.length);
+    console.log("📊 [GAME] Current content available:", !!currentContentRef.current);
+    
+    // If we have questions in queue, use them directly without fetching new content
+    if (questionsQueueRef.current.length > 0) {
+      console.log("📥 [GAME] Using question from queue");
+      let questionFromQueue = questionsQueueRef.current[0];
+      
+      // Dequeue
+      setQuestionsQueue((prev) => {
+        const updated = prev.slice(1);
+        questionsQueueRef.current = updated;
+        console.log(`📥 [QUEUE] Dequeued question (remaining: ${updated.length})`);
+        return updated;
+      });
+
+      // Check for duplicates - loop until we find a non-duplicate
+      let attempts = 0;
+      const maxAttempts = questionsQueueRef.current.length + 5; // Allow checking queue + some buffer
+      
+      while (attempts < maxAttempts) {
+        const isDuplicate = askedQuestionsRef.current.some(
+          (q) => q.toLowerCase().trim() === questionFromQueue.question.toLowerCase().trim()
+        );
+
+        if (!isDuplicate) {
+          // Found valid question
+          const newQuestions = [...askedQuestionsRef.current, questionFromQueue.question];
+          const newIndices = [...previousAnswerIndicesRef.current, questionFromQueue.correctAnswerIndex];
+          setAskedQuestions(newQuestions);
+          setPreviousAnswerIndices(newIndices);
+          askedQuestionsRef.current = newQuestions;
+          previousAnswerIndicesRef.current = newIndices;
+          setTrivia(questionFromQueue);
+          console.log("✅ [GAME] Question set from queue");
+
+          // Pre-fetch next batch if queue is low
+          if (questionsQueueRef.current.length <= PRE_FETCH_THRESHOLD && currentContentRef.current && !isFetchingBatchRef.current) {
+            console.log("🔄 [GAME] Queue low, pre-fetching batch...");
+            preFetchBatch(currentContentRef.current);
+          }
+          return;
+        }
+
+        // Duplicate found, try next from queue
+        console.warn(`⚠️ [GAME] Duplicate question (attempt ${attempts + 1}), trying next...`);
+        if (questionsQueueRef.current.length > 0) {
+          questionFromQueue = questionsQueueRef.current[0];
+          setQuestionsQueue((prev) => {
+            const updated = prev.slice(1);
+            questionsQueueRef.current = updated;
+            return updated;
+          });
+          attempts++;
+        } else {
+          // Queue exhausted, break to fetch new batch
+          console.warn("⚠️ [GAME] Queue exhausted while checking duplicates");
+          break;
+        }
+      }
+    }
+
+    // If queue is empty or all questions are duplicates, fetch new content and batch
+    // But only if we have content available - otherwise we need to fetch new topic
+    if (currentContentRef.current && selectedCategory) {
+      // We have content and a category - generate a new batch from a new random topic
+      console.log("🔄 [GAME] Queue empty, generating new batch from category...");
+      const newTopic = getRandomTopicFromCategory(selectedCategory);
+      setCurrentTopic(newTopic);
+      
+      // Fetch content and generate batch
+      try {
+        setLoading(true);
+        let summary = await fetchWikipediaSummaryClient(newTopic.trim());
+        
+        if (!summary || !summary.extract) {
+          const fallbackData = await fetchFallbackData(newTopic.trim());
+          if (fallbackData && fallbackData.extract) {
+            summary = { title: fallbackData.title, extract: fallbackData.extract };
+          }
+        }
+        
+        if (summary && summary.extract) {
+          currentContentRef.current = summary.extract;
+          const batch = await generateTriviaBatch(
+            summary.extract,
+            BATCH_SIZE,
+            askedQuestionsRef.current,
+            previousAnswerIndicesRef.current
+          );
+          
+          if (batch.questions.length > 0) {
+            setQuestionsQueue((prev) => {
+              const updated = [...prev, ...batch.questions];
+              questionsQueueRef.current = updated;
+              console.log(`✅ [GAME] Generated ${batch.questions.length} questions, added to queue`);
+              return updated;
+            });
+            
+            // Use first question from batch
+            const questionFromQueue = batch.questions[0];
+            setQuestionsQueue((prev) => {
+              const updated = prev.slice(1);
+              questionsQueueRef.current = updated;
+              return updated;
+            });
+            
+            const newQuestions = [...askedQuestionsRef.current, questionFromQueue.question];
+            const newIndices = [...previousAnswerIndicesRef.current, questionFromQueue.correctAnswerIndex];
+            setAskedQuestions(newQuestions);
+            setPreviousAnswerIndices(newIndices);
+            askedQuestionsRef.current = newQuestions;
+            previousAnswerIndicesRef.current = newIndices;
+            setTrivia(questionFromQueue);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("❌ [GAME] Error generating batch:", error);
+      }
+      setLoading(false);
+      if (loadingMessageIntervalRef.current) {
+        clearInterval(loadingMessageIntervalRef.current);
+        loadingMessageIntervalRef.current = null;
+      }
+      setLoadingMessage("");
+    } else if (!currentContentRef.current) {
+      // No content available, need to start fresh
+      console.log("🔄 [GAME] No content available, starting fresh...");
+      await handleStartGame();
+    } else {
+      // Have content but no category - regenerate batch from same content
+      console.log("🔄 [GAME] Queue empty, regenerating batch from same content...");
+      const batch = await generateTriviaBatch(
+        currentContentRef.current,
+        BATCH_SIZE,
+        askedQuestionsRef.current,
+        previousAnswerIndicesRef.current
+      );
+      
+      if (batch.questions.length > 0) {
+        setQuestionsQueue((prev) => {
+          const updated = [...prev, ...batch.questions];
+          questionsQueueRef.current = updated;
+          console.log(`✅ [GAME] Regenerated ${batch.questions.length} questions, added to queue`);
+          return updated;
+        });
+        
+        // Use first question from batch
+        const questionFromQueue = batch.questions[0];
+        setQuestionsQueue((prev) => {
+          const updated = prev.slice(1);
+          questionsQueueRef.current = updated;
+          return updated;
+        });
+        
+        const newQuestions = [...askedQuestionsRef.current, questionFromQueue.question];
+        const newIndices = [...previousAnswerIndicesRef.current, questionFromQueue.correctAnswerIndex];
+        setAskedQuestions(newQuestions);
+        setPreviousAnswerIndices(newIndices);
+        askedQuestionsRef.current = newQuestions;
+        previousAnswerIndicesRef.current = newIndices;
+        setTrivia(questionFromQueue);
+        return;
+      }
+    }
   };
 
   const handleNewTopic = () => {
@@ -308,8 +544,18 @@ export default function Home() {
     setScore({ correct: 0, total: 0 });
     setAskedQuestions([]); // Reset asked questions
     setPreviousAnswerIndices([]); // Reset answer indices
+    setQuestionsQueue([]); // Reset queue
+    setAnswerHistory([]); // Reset answer history
     askedQuestionsRef.current = []; // Reset refs
     previousAnswerIndicesRef.current = []; // Reset refs
+    questionsQueueRef.current = []; // Reset queue ref
+    currentContentRef.current = ""; // Reset content ref
+    isFetchingBatchRef.current = false; // Reset fetching flag
+    if (loadingMessageIntervalRef.current) {
+      clearInterval(loadingMessageIntervalRef.current);
+      loadingMessageIntervalRef.current = null;
+    }
+    setLoadingMessage("");
     setError(null);
   };
 
@@ -339,6 +585,7 @@ export default function Home() {
           loading={loading}
           currentTopic={currentTopic}
           category={selectedCategory ? getCategoryById(selectedCategory) : null}
+          answerHistory={answerHistory}
         />
       </>
     );
@@ -380,6 +627,12 @@ export default function Home() {
         {/* Quick Play Section - Tag Cloud Layout */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-3 text-gray-300">Juego Rápido</h2>
+          {loading && !trivia && (
+            <div className="mb-4 flex items-center justify-center gap-2 text-blue-400">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+              <span className="text-sm">{loadingMessage || "Cargando categoría..."}</span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {/* Surprise Me Button */}
             <button

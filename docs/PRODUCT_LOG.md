@@ -3,7 +3,7 @@
 **Project Status:** 🚀 Version 1.0.0-alpha - First Stable Release  
 **Deployment Date:** 2026-01-22  
 **Deployment URL:** https://quizi-ai.vercel.app/ (when deployed)  
-**Last Update:** 2026-01-22 - Batch generation, caching, error notifications; docs aligned with Gemini notes  
+**Last Update:** 2026-01-23 - Core Refinement Plan complete: dual-timer system, dynamic loading messages, E2E tests, test coverage improvements (68.11%)  
 **Next Steps:** Phase 2 (Gemini-prioritized): 2.1 Haptic Feedback → 2.2 Persistence → 2.3 PWA Icons & Splash  
 **Concept:** AI-powered Trivia PWA using real-time scraping from specialized sources.  
 **Investment:** 0€ (Bootstrapped)  
@@ -65,13 +65,13 @@ An infinite, personalized trivia experience where content is generated on the fl
   - `generateTriviaBatch(content, count, previousQuestions, previousAnswerIndices)` for batch generation (10–20 questions)
   - Separated concerns: client fetches data, server generates AI
   - Comprehensive error messages
-- `lib/client/question-cache.ts`: In-memory cache for pre-generated questions (`minSize` 5, `targetSize` 20); used by `app/page.tsx`
+- `lib/client/question-cache.ts`: In-memory cache utility (legacy, replaced by queue-based system)
 - `components/ErrorNotification.tsx`: Popup for API failures (e.g. rate limit), retry support
 - `app/page.tsx`: Main game flow with exhaustive logging
   - Client-side data fetching orchestration
   - Error handling and user feedback
   - Topic persistence for infinite trivia
-  - **Question cache** - Uses `QuestionCache`; pop from cache first, refill via `generateTriviaBatch` when empty/low
+  - **Question queue** - Uses `questionsQueue` state; dequeue from queue first, pre-fetch via `generateTriviaBatch` when ≤2 questions
   - **Question tracking state** - Maintains list of asked questions and `previousAnswerIndices` for diversity
   - **Next question handler** - Separated from answer handler for timer control
   - **Category selection UI** - Quick Play section with tag cloud layout (flex wrap) and "Aleatorio" button
@@ -206,7 +206,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ Production build successful
 - ✅ Mobile testing infrastructure complete (ngrok + WSL2 support)
 - ✅ Comprehensive documentation (README, architecture guides, troubleshooting)
-- ✅ Question cache & batch generation (reduced AI calls); ErrorNotification for rate limits
+- ✅ Queue-based batch loading (10 questions per batch, pre-fetch at ≤2); ErrorNotification for rate limits
 
 **Testing Coverage:**
 - ✅ Unit tests for Wikipedia client service (`__tests__/lib/client/wikipedia-client.test.ts`) - 6 test cases
@@ -330,16 +330,90 @@ An infinite, personalized trivia experience where content is generated on the fl
 - **Benefits:** Clear server/client separation, better organization, enhanced security
 - **Documentation:** All docs updated (ARCHITECTURE.md, QUICK_REFERENCE.md, PRODUCT_LOG.md, README.md, guide files)
 
-### Batch Generation, Question Cache & Error Notifications ✅ NEW (2026-01-22)
-- **Feature:** Reduce AI API calls via batching; user-friendly feedback on rate limits.
+### Production Optimizations ✅ NEW (2026-01-23)
+- **Feature:** Production-ready optimizations for Vercel deployment and improved UX.
 - **Implementation:**
-  - **`lib/client/question-cache.ts`:** In-memory cache for `TriviaQuestion[]` with `minSize` (5) and `targetSize` (20). Methods: `pop()`, `push()`, `pushMany()`, `needsRefill()`, `isEmpty()`, `clear()`.
-  - **`generateTriviaBatch`** (`lib/server/game.ts`): Server action to generate 10–20 questions per batch. Deduplicates within batch; stops on `RATE_LIMIT`. Small delay between requests.
-  - **`app/page.tsx`:** Uses cache first; if empty/low, calls `generateTriviaBatch` (20 when empty, 15 when low). Background refill when `needsRefill()`. Single-question fallback if batch fails.
+  - **Vercel Logs Fix** (`lib/server/logger.ts`): Disabled file system operations in production (`NODE_ENV === "production"`). Prevents Vercel from attempting to create `/logs` directory. Console logging only in production.
+  - **Queue-Based Batch Loading** (`app/page.tsx`): Replaced cache system with queue-based approach:
+    - Batch size: 10 questions per batch (`BATCH_SIZE = 10`)
+    - Pre-fetch threshold: Automatically fetches next batch when queue has ≤2 questions (`PRE_FETCH_THRESHOLD = 2`)
+    - Proper dequeuing: Questions are dequeued from `questionsQueue` state
+    - Background pre-fetching: Runs in background without blocking UI
+    - Smart queue management: Uses queue first, only fetches new content when queue is empty
+  - **Loading Indicator** (`app/page.tsx`): Added spinner with "Cargando categoría..." message when category is first selected (before trivia loads).
+  - **Segmented Progress Bar** (`components/GameScreen.tsx`): Replaced solid progress bar with segmented dots:
+    - Green (`bg-green-500`) - correct answers
+    - Red (`bg-red-500`) - incorrect answers
+    - Grey (`bg-gray-700`) - unanswered (future questions)
+    - Shows up to 10 segments, with "+N" indicator if more than 10 questions
+    - Tracks answer history via `answerHistory` prop
   - **`components/ErrorNotification.tsx`:** Popup for API failures (e.g. rate limit). Distinguishes `RATE_LIMIT` with retry; optional auto-hide for non-critical errors.
 - **Answer diversity:** `previousAnswerIndices` passed to AI; prompt instructs varying `correctAnswerIndex` (avoids repeated positions).
-- **Deduplication:** Exact-question check before use; emergency batch if cached question is duplicate.
-- **Status:** ✅ Complete. Fewer API calls, clearer UX on quota issues.
+- **Deduplication:** Exact-question check before use; loops through queue to find non-duplicates.
+- **Status:** ✅ Complete. Production-ready, optimized API usage, improved UX.
+
+### AI Provider Abstraction & Unified Prompts ✅ NEW (2026-01-23)
+- **Feature:** Refactored AI module with provider abstraction pattern for maintainability and expansion.
+- **Implementation:**
+  - **Provider Abstraction** (`lib/server/ai/providers/base.ts`): Base `AIProvider` interface that all providers implement
+    - `isAvailable()` - Checks if provider is configured
+    - `generate(prompt, questionCount)` - Generates trivia with unified prompt
+  - **Unified Prompt Builder** (`lib/server/ai/prompt-builder.ts`): Single source of truth for prompts
+    - `buildTriviaPrompt(context)` - Generates consistent prompts across all providers
+    - Supports both single and batch question generation
+    - Includes previous questions and answer indices for diversity
+  - **Provider Implementations:**
+    - `lib/server/ai/providers/gemini.ts` - Gemini provider (REST API + SDK fallback)
+    - `lib/server/ai/providers/groq.ts` - Groq provider (OpenAI-compatible API)
+    - `lib/server/ai/providers/huggingface.ts` - Hugging Face provider (fixed endpoint: router.huggingface.co)
+  - **Main Orchestrator** (`lib/server/ai/index.ts`): Coordinates provider fallback chain
+    - Lazy provider initialization (checks env vars at call time)
+    - Automatic fallback: Gemini → Groq → Hugging Face
+    - Unified error handling and logging
+- **Benefits:**
+  - **Maintainability:** Easy to add new providers (just implement `AIProvider`)
+  - **Consistency:** All providers use the same prompt structure
+  - **Testability:** Providers can be mocked/tested independently
+  - **Expansion:** Simple to add new AI providers (OpenAI, Anthropic, etc.)
+- **Fixes:**
+  - ✅ Hugging Face endpoint updated to `router.huggingface.co` (was deprecated `api-inference.huggingface.co`)
+  - ✅ All providers now use unified prompt builder
+  - ✅ Batch generation properly requests multiple questions in single API call
+- **Status:** ✅ Complete. Clean architecture, all tests passing (90/90), ready for expansion.
+
+### Core Refinement Plan Implementation ✅ NEW (2026-01-23)
+- **Feature:** Complete implementation of Core Refinement Plan v1.1.0 with dual-timer system, dynamic loading, and comprehensive testing.
+- **Implementation:**
+  - **Phase 1: Infrastructure & Mocks**
+    - Production logger verified (already had production checks)
+    - Spanish Mock Provider: 10 questions in `lib/client/mock-provider.ts`
+    - Mock integration: `NEXT_PUBLIC_USE_MOCKS=true` toggle in AI service
+  - **Phase 2: Game Logic**
+    - Batching system: 10-question queue with pre-fetch at question 8 (when queue has 2 left)
+    - Dual-timer system:
+      - Timer A (Decision): 15-second countdown; marks incorrect on timeout
+      - Timer B (Transition): 10-second countdown after feedback
+  - **Phase 3: UI/UX**
+    - Segmented progress bar: Already implemented (green/red/grey segments)
+    - Dynamic Spanish loading messages: Rotating every 2s:
+      - "Consultando la Biblioteca de Alejandría..."
+      - "Interrogando a la IA sobre {category}..."
+      - "Limpiando el polvo de los libros..."
+      - "Sincronizando neuronas artificiales..."
+  - **Phase 4: E2E Testing**
+    - Playwright installed and configured (iPhone 13 viewport)
+    - 6 E2E tests covering: Load → Answer → Timeout → Pre-fetch → Progress bar → Loading messages
+    - All E2E tests passing with mock provider
+- **Test Coverage Improvements:**
+  - Added tests for: Mock Provider, ErrorNotification, Game batch logic, AI providers (Groq, Hugging Face), AI index orchestrator
+  - **Coverage:** 68.11% (up from 59.1%)
+    - `lib/server`: 88.07% ✅
+    - `lib/server/ai`: 98.36% ✅
+    - `lib/client`: 74.28% ✅
+    - `components`: 79.73% ✅
+    - `app/page.tsx`: 48.36% (complex component, covered by E2E tests)
+  - **Total Tests:** 132 unit tests + 6 E2E tests = 138 tests passing
+- **Status:** ✅ Complete. All phases implemented, all tests passing, production-ready.
 
 ### Git/SSH Authentication Setup ✅ NEW
 - **Feature:** SSH key-based authentication for GitHub

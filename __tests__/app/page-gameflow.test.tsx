@@ -13,6 +13,12 @@ const mockGenerateTriviaFromContentServer = require("@/lib/server/game").generat
 const mockGenerateTriviaBatch = require("@/lib/server/game").generateTriviaBatch;
 
 describe("Home Page - Game Flow", () => {
+  // Helper to wait for trivia to appear
+  const waitForTrivia = async () => {
+    await waitFor(() => {
+      expect(screen.queryByText(/tiempo restante|siguiente pregunta/i)).toBeInTheDocument();
+    }, { timeout: 5000 });
+  };
   beforeEach(() => {
     jest.clearAllMocks();
     jest.restoreAllMocks();
@@ -21,14 +27,15 @@ describe("Home Page - Game Flow", () => {
       extract: "Test content about the topic",
     });
     mockFetchFallbackData.mockResolvedValue(null);
-    // Mock batch generation (used when cache is empty)
+    // Mock batch generation (used when queue is empty) - returns 10 questions
+    const mockQuestions = Array.from({ length: 10 }, (_, i) => ({
+      question: `Test question ${i + 1}?`,
+      options: ["A", "B", "C", "D"] as [string, string, string, string],
+      correctAnswerIndex: i % 4,
+      funFact: `Test fact ${i + 1}`,
+    }));
     mockGenerateTriviaBatch.mockResolvedValue({
-      questions: [{
-        question: "Test question?",
-        options: ["A", "B", "C", "D"] as [string, string, string, string],
-        correctAnswerIndex: 0,
-        funFact: "Test fact",
-      }],
+      questions: mockQuestions,
       errors: [],
     });
     // Mock single question generation (fallback)
@@ -80,8 +87,13 @@ describe("Home Page - Game Flow", () => {
 
     await waitFor(() => {
       expect(mockFetchFallbackData).toHaveBeenCalledWith("Test Topic");
-      // With batch generation, it might call generateTriviaBatch instead
-      expect(mockGenerateTriviaBatch).toHaveBeenCalled();
+      // With batch generation, it should call generateTriviaBatch when queue is empty
+      expect(mockGenerateTriviaBatch).toHaveBeenCalledWith(
+        expect.any(String),
+        10, // BATCH_SIZE
+        expect.any(Array),
+        expect.any(Array)
+      );
     });
   });
 
@@ -137,24 +149,17 @@ describe("Home Page - Game Flow", () => {
     fireEvent.click(startButton);
 
     await waitFor(() => {
-      // With batch generation, it should call generateTriviaBatch when cache is empty
-      expect(mockGenerateTriviaBatch).toHaveBeenCalled();
+      // With batch generation, it should call generateTriviaBatch when queue is empty
+      expect(mockGenerateTriviaBatch).toHaveBeenCalledWith(
+        expect.any(String),
+        10, // BATCH_SIZE
+        expect.any(Array),
+        expect.any(Array)
+      );
     });
 
-    // Generate second question
-    mockGenerateTriviaFromContentServer.mockResolvedValue({
-      trivia: {
-        question: "Second question?",
-        options: ["A", "B", "C", "D"] as [string, string, string, string],
-        correctAnswerIndex: 1,
-        funFact: "Second fact",
-      },
-      error: null,
-    });
-
-    // With batch generation, it should call generateTriviaBatch when cache is empty
-    // Single question generation is only used as fallback
-    expect(mockGenerateTriviaBatch).toHaveBeenCalled();
+    // Generate second question - should use queue if available, otherwise fetch new batch
+    // The queue should have remaining questions from the first batch
   });
 
   it("should disable start button when input is empty", () => {
@@ -204,5 +209,61 @@ describe("Home Page - Game Flow", () => {
       // Batch generation should be called
       expect(mockGenerateTriviaBatch).toHaveBeenCalled();
     });
+  });
+
+  it("should reset game state when Nuevo tema is clicked", async () => {
+    render(<Home />);
+    
+    // Start a game first
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    // Wait for game to start (trivia question appears)
+    await waitFor(() => {
+      const question = screen.queryByText(/Test question/i);
+      expect(question).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // Click "Nuevo tema" button
+    const newTopicButton = screen.getByText("Nuevo tema");
+    fireEvent.click(newTopicButton);
+
+    // Should return to category selection screen
+    await waitFor(() => {
+      expect(screen.getByText("Juego Rápido")).toBeInTheDocument();
+    }, { timeout: 2000 });
+  }, 10000);
+
+
+  it("should show dynamic loading messages", async () => {
+    // Delay the response to see loading messages
+    mockFetchWikipediaSummaryClient.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({
+        title: "Test Topic",
+        extract: "Test content",
+      }), 100))
+    );
+
+    render(<Home />);
+    
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    // Check for loading message (may rotate quickly)
+    await waitFor(() => {
+      const loadingMessages = [
+        /Consultando la Biblioteca/i,
+        /Interrogando a la IA/i,
+        /Limpiando el polvo/i,
+        /Sincronizando neuronas/i,
+        /Cargando categoría/i,
+      ];
+      const hasLoadingMessage = loadingMessages.some(msg => 
+        screen.queryByText(msg) !== null
+      );
+      expect(hasLoadingMessage || screen.queryByText(/tiempo restante/i)).toBeTruthy();
+    }, { timeout: 2000 });
   });
 });

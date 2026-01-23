@@ -196,18 +196,24 @@ describe("GameScreen Component", () => {
 
   it("should display progress bar when score is provided", () => {
     const score = { correct: 3, total: 5 };
+    const answerHistory = [true, false, true, false, true]; // 5 answers
     const { container } = render(
       <GameScreen
         trivia={mockTrivia}
         onAnswer={mockOnAnswer}
         onNextQuestion={mockOnNextQuestion}
         score={score}
+        answerHistory={answerHistory}
       />
     );
 
-    // Progress bar is a div with bg-blue-600 class
-    const progressBar = container.querySelector(".bg-blue-600");
+    // Progress bar should have segments (green/red/grey dots)
+    const progressBar = container.querySelector(".flex.gap-1\\.5");
     expect(progressBar).toBeInTheDocument();
+    
+    // Should have segments for answered questions
+    const segments = container.querySelectorAll(".bg-green-500, .bg-red-500, .bg-gray-700");
+    expect(segments.length).toBeGreaterThan(0);
   });
 
   it("should call onNewTopic when new topic button is clicked", () => {

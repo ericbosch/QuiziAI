@@ -32,13 +32,21 @@ QuiziAI/
 │
 ├── lib/                         # Core business logic
 │   ├── server/                  # Server-only code
-│   │   ├── ai.ts               # AI service (multi-provider fallback)
+│   │   ├── ai/                 # AI module (provider abstraction)
+│   │   │   ├── index.ts        # Main AI orchestrator
+│   │   │   ├── prompt-builder.ts # Unified prompt builder
+│   │   │   ├── types.ts        # AI types
+│   │   │   └── providers/      # AI provider implementations
+│   │   │       ├── base.ts     # Provider interface
+│   │   │       ├── gemini.ts   # Gemini provider
+│   │   │       ├── groq.ts     # Groq provider
+│   │   │       └── huggingface.ts # Hugging Face provider
 │   │   ├── game.ts             # Server action (AI + batch generation)
 │   │   └── logger.ts           # Server-side file logging utility
 │   ├── client/                  # Client-only code
 │   │   ├── wikipedia-client.ts # Client-side Wikipedia fetch (primary)
 │   │   ├── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
-│   │   └── question-cache.ts   # In-memory cache for pre-generated questions
+│   │   └── question-cache.ts   # In-memory cache utility (legacy, replaced by queue)
 │   └── types.ts                # Shared TypeScript types
 │
 ├── constants/
@@ -85,18 +93,26 @@ QuiziAI/
    - If fails → REST API fallback
    - If fails → lib/client/fallback-data.ts → English Wiki / DuckDuckGo
    ↓
-4. Get question (cache-first, then AI):
-   - Check lib/client/question-cache.ts; pop if available.
-   - If empty/low: lib/server/game.ts → generateTriviaBatch(10–20) → push to cache, refill in background.
+4. Get question (queue-first, then batch):
+   - Check questionsQueue state; dequeue if available.
+   - If queue empty: lib/server/game.ts → generateTriviaBatch(10) → add to queue.
    - Fallback: single generateTriviaFromContentServer if batch fails.
-   - lib/server/ai.ts: Gemini → Groq → Hugging Face; returns TriviaQuestion JSON.
+   - lib/server/ai/index.ts: Orchestrates provider fallback (Gemini → Groq → Hugging Face)
+   - lib/server/ai/prompt-builder.ts: Generates unified prompt for all providers
+   - lib/server/ai/providers/: Provider implementations handle API-specific details
+   - Returns TriviaQuestion JSON (single or batch array)
    - On RATE_LIMIT: ErrorNotification popup with retry.
    ↓
-5. Display question in GameScreen.tsx
+5. Display question in GameScreen.tsx (with segmented progress bar)
    ↓
 6. User answers → feedback → timer (10s) → next question
    ↓
-7. Repeat from step 4 (same topic; new question from cache or AI)
+7. handleNextQuestion():
+   - If queue has questions → dequeue and use
+   - If queue ≤2 → background pre-fetch via generateTriviaBatch()
+   - If queue empty → generate new batch (new topic if category selected)
+   ↓
+8. Repeat from step 4
 ```
 
 ### Key Architectural Decisions
@@ -105,13 +121,25 @@ QuiziAI/
    - **Why:** Avoids server-side blocking (Wikipedia 403 errors)
    - **How:** Browser makes direct API calls with CORS
 
-2. **Server-side AI generation** (`lib/server/game.ts` + `lib/server/ai.ts`)
+2. **Server-side AI generation** (`lib/server/game.ts` + `lib/server/ai/`)
    - **Why:** API keys must stay server-side (security)
    - **How:** Next.js server actions ("use server")
+   - **Architecture:** Provider abstraction pattern with unified prompt builder
+     - `lib/server/ai/index.ts` - Main orchestrator with fallback chain
+     - `lib/server/ai/prompt-builder.ts` - Unified prompt generation
+     - `lib/server/ai/providers/` - Provider implementations (Gemini, Groq, Hugging Face)
 
-3. **Multi-provider fallback** (`lib/server/ai.ts`)
-   - **Why:** Free tiers have quota limits
-   - **How:** Try Gemini → Groq → Hugging Face sequentially
+3. **Queue-based batch loading** (`app/page.tsx`)
+   - **Why:** Reduce AI API calls, improve UX with pre-fetching
+   - **How:** Generate batches of 10 questions, queue them, pre-fetch when ≤2 remain
+
+4. **Provider abstraction & unified prompts** (`lib/server/ai/`)
+   - **Why:** Maintainability, expansion, consistent prompts across providers
+   - **How:** 
+     - Base `AIProvider` interface for all providers
+     - Unified `buildTriviaPrompt()` ensures consistent prompts
+     - Provider implementations (Gemini, Groq, Hugging Face) handle API-specific details
+     - Easy to add new providers by implementing `AIProvider` interface
 
 4. **Question deduplication**
    - **Why:** Avoid repetitive questions in same session
@@ -121,9 +149,9 @@ QuiziAI/
    - **Why:** Better UX than manual input
    - **How:** Selected category persists, random topic per question
 
-6. **Question cache & batch generation**
-   - **Why:** Reduce AI API calls, avoid quota limits; faster UX.
-   - **How:** In-memory `QuestionCache` (min 5, target 20). Pop first; `generateTriviaBatch` when empty/low; background refill.
+6. **Queue-based batch loading**
+   - **Why:** Reduce AI API calls, avoid quota limits; faster UX with pre-fetching
+   - **How:** `questionsQueue` state array. Dequeue first; `generateTriviaBatch(10)` when empty; pre-fetch when ≤2 remain
 
 7. **Error notifications**
    - **Why:** Clear UX when API fails (e.g. rate limit).
@@ -443,5 +471,5 @@ QuiziAI/
 
 ---
 
-**Last Updated:** 2026-01-22  
+**Last Updated:** 2026-01-23 (Core Refinement Plan: dual-timer, dynamic loading, E2E tests)  
 **Maintained By:** Solo-Dev (CEO/CTO)

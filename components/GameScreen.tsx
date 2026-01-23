@@ -13,9 +13,11 @@ interface GameScreenProps {
   loading?: boolean;
   currentTopic?: string;
   category?: CategoryInfo | null;
+  answerHistory?: boolean[]; // History of correct/incorrect answers for progress bar
 }
 
-const TIMER_DURATION = 10; // 10 seconds
+const DECISION_TIMER_DURATION = 15; // 15 seconds to answer
+const TRANSITION_TIMER_DURATION = 10; // 10 seconds to read feedback
 
 export default function GameScreen({
   trivia,
@@ -26,15 +28,20 @@ export default function GameScreen({
   loading = false,
   currentTopic,
   category,
+  answerHistory = [],
 }: GameScreenProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const [decisionTimeLeft, setDecisionTimeLeft] = useState<number | null>(null); // Timer A: Decision timer
+  const [transitionTimeLeft, setTransitionTimeLeft] = useState<number | null>(null); // Timer B: Transition timer
+  const decisionTimerRef = useRef<NodeJS.Timeout | null>(null); // Timeout for decision timer
+  const decisionCountdownRef = useRef<NodeJS.Timeout | null>(null); // Interval for decision countdown
+  const transitionTimerRef = useRef<NodeJS.Timeout | null>(null); // Timeout for transition timer
+  const transitionCountdownRef = useRef<NodeJS.Timeout | null>(null); // Interval for transition countdown
   const selectedIndexRef = useRef<number | null>(null);
-  const timerStartedRef = useRef<boolean>(false);
+  const decisionTimerStartedRef = useRef<boolean>(false);
+  const transitionTimerStartedRef = useRef<boolean>(false);
 
   // Update ref when selectedIndex changes
   useEffect(() => {
@@ -42,47 +49,59 @@ export default function GameScreen({
   }, [selectedIndex]);
 
   const handleNextQuestion = useCallback(() => {
-    if (selectedIndexRef.current === null) return; // Must have answered first
-    
-    const correct = selectedIndexRef.current === trivia.correctAnswerIndex;
-    onAnswer(correct);
-    
     // Reset state
     setSelectedIndex(null);
     setShowFeedback(false);
-    setTimeLeft(null);
-    timerStartedRef.current = false;
+    setDecisionTimeLeft(null);
+    setTransitionTimeLeft(null);
+    decisionTimerStartedRef.current = false;
+    transitionTimerStartedRef.current = false;
     
-    // Clear timers
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+    // Clear all timers
+    if (decisionTimerRef.current) {
+      clearTimeout(decisionTimerRef.current);
+      decisionTimerRef.current = null;
     }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
+    if (decisionCountdownRef.current) {
+      clearInterval(decisionCountdownRef.current);
+      decisionCountdownRef.current = null;
+    }
+    if (transitionTimerRef.current) {
+      clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+    if (transitionCountdownRef.current) {
+      clearInterval(transitionCountdownRef.current);
+      transitionCountdownRef.current = null;
     }
     
     // Call next question handler
     onNextQuestion();
-  }, [trivia.correctAnswerIndex, onAnswer, onNextQuestion]);
+  }, [onNextQuestion]);
 
-  // Start timer when feedback is shown
+  // Timer A: Start decision timer when question appears
   useEffect(() => {
-    if (showFeedback && !timerStartedRef.current) {
-      timerStartedRef.current = true;
-      setTimeLeft(TIMER_DURATION);
+    if (!showFeedback && !decisionTimerStartedRef.current && selectedIndex === null) {
+      decisionTimerStartedRef.current = true;
+      setDecisionTimeLeft(DECISION_TIMER_DURATION);
       
-      // Countdown timer
-      countdownRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
+      // Decision countdown timer
+      decisionCountdownRef.current = setInterval(() => {
+        setDecisionTimeLeft((prev) => {
           if (prev === null || prev === undefined) {
-            return TIMER_DURATION;
+            return DECISION_TIMER_DURATION;
           }
           if (prev <= 1) {
-            if (countdownRef.current) {
-              clearInterval(countdownRef.current);
-              countdownRef.current = null;
+            if (decisionCountdownRef.current) {
+              clearInterval(decisionCountdownRef.current);
+              decisionCountdownRef.current = null;
+            }
+            // Timeout: mark as incorrect and show feedback
+            if (selectedIndexRef.current === null) {
+              setSelectedIndex(-1); // Use -1 to indicate timeout
+              setIsCorrect(false);
+              setShowFeedback(true);
+              onAnswer(false); // Mark as incorrect
             }
             return 0;
           }
@@ -90,51 +109,122 @@ export default function GameScreen({
         });
       }, 1000);
 
-      // Auto-advance after timer
-      timerRef.current = setTimeout(() => {
-        handleNextQuestion();
-      }, TIMER_DURATION * 1000);
+      // Auto-timeout after decision timer
+      decisionTimerRef.current = setTimeout(() => {
+        if (selectedIndexRef.current === null) {
+          setSelectedIndex(-1); // Use -1 to indicate timeout
+          setIsCorrect(false);
+          setShowFeedback(true);
+          onAnswer(false); // Mark as incorrect
+        }
+      }, DECISION_TIMER_DURATION * 1000);
     }
 
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      if (decisionTimerRef.current) {
+        clearTimeout(decisionTimerRef.current);
+        decisionTimerRef.current = null;
       }
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-        countdownRef.current = null;
+      if (decisionCountdownRef.current) {
+        clearInterval(decisionCountdownRef.current);
+        decisionCountdownRef.current = null;
+      }
+    };
+  }, [trivia.question, showFeedback, selectedIndex, onAnswer]);
+
+  // Timer B: Start transition timer when feedback is shown
+  useEffect(() => {
+    if (showFeedback && !transitionTimerStartedRef.current) {
+      transitionTimerStartedRef.current = true;
+      setTransitionTimeLeft(TRANSITION_TIMER_DURATION);
+      
+      // Transition countdown timer
+      transitionCountdownRef.current = setInterval(() => {
+        setTransitionTimeLeft((prev) => {
+          if (prev === null || prev === undefined) {
+            return TRANSITION_TIMER_DURATION;
+          }
+          if (prev <= 1) {
+            if (transitionCountdownRef.current) {
+              clearInterval(transitionCountdownRef.current);
+              transitionCountdownRef.current = null;
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Auto-advance after transition timer
+      transitionTimerRef.current = setTimeout(() => {
+        handleNextQuestion();
+      }, TRANSITION_TIMER_DURATION * 1000);
+    }
+
+    return () => {
+      if (transitionTimerRef.current) {
+        clearTimeout(transitionTimerRef.current);
+        transitionTimerRef.current = null;
+      }
+      if (transitionCountdownRef.current) {
+        clearInterval(transitionCountdownRef.current);
+        transitionCountdownRef.current = null;
       }
     };
   }, [showFeedback, handleNextQuestion]);
 
-  // Reset timer when new question arrives
+  // Reset timers when new question arrives
   useEffect(() => {
     setSelectedIndex(null);
     setShowFeedback(false);
-    setTimeLeft(null);
-    timerStartedRef.current = false;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+    setDecisionTimeLeft(null);
+    setTransitionTimeLeft(null);
+    decisionTimerStartedRef.current = false;
+    transitionTimerStartedRef.current = false;
+    if (decisionTimerRef.current) {
+      clearTimeout(decisionTimerRef.current);
+      decisionTimerRef.current = null;
     }
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
+    if (decisionCountdownRef.current) {
+      clearInterval(decisionCountdownRef.current);
+      decisionCountdownRef.current = null;
+    }
+    if (transitionTimerRef.current) {
+      clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+    if (transitionCountdownRef.current) {
+      clearInterval(transitionCountdownRef.current);
+      transitionCountdownRef.current = null;
     }
   }, [trivia.question]);
 
   const handleOptionClick = (index: number) => {
     if (selectedIndex !== null) return; // Prevent multiple selections
 
+    // Clear decision timer
+    if (decisionTimerRef.current) {
+      clearTimeout(decisionTimerRef.current);
+      decisionTimerRef.current = null;
+    }
+    if (decisionCountdownRef.current) {
+      clearInterval(decisionCountdownRef.current);
+      decisionCountdownRef.current = null;
+    }
+
     setSelectedIndex(index);
     const correct = index === trivia.correctAnswerIndex;
     setIsCorrect(correct);
     setShowFeedback(true);
+    onAnswer(correct);
   };
 
   const getButtonStyle = (index: number) => {
-    if (selectedIndex === null) {
+    if (selectedIndex === null || selectedIndex === -1) {
+      // Timeout case: show correct answer
+      if (selectedIndex === -1 && index === trivia.correctAnswerIndex) {
+        return "bg-green-600 text-white";
+      }
       return "bg-gray-800 hover:bg-gray-700 text-white";
     }
 
@@ -176,14 +266,30 @@ export default function GameScreen({
         )}
       </div>
 
-      {/* Progress Bar - Shows session progress */}
+      {/* Segmented Progress Bar - Shows answer history */}
       {score && score.total > 0 && (
         <div className="px-4 pb-2">
-          <div className="w-full bg-gray-800 rounded-full h-1.5">
-            <div
-              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min((score.total * 20) % 100, 100)}%` }}
-            />
+          <div className="flex gap-1.5 justify-center items-center">
+            {Array.from({ length: Math.min(score.total, 10) }).map((_, index) => {
+              const isAnswered = index < answerHistory.length;
+              const isCorrect = isAnswered ? answerHistory[index] : null;
+              
+              return (
+                <div
+                  key={index}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    isCorrect === true
+                      ? "bg-green-500 w-6"
+                      : isCorrect === false
+                      ? "bg-red-500 w-6"
+                      : "bg-gray-700 w-2"
+                  }`}
+                />
+              );
+            })}
+            {score.total > 10 && (
+              <span className="text-xs text-gray-500 ml-1">+{score.total - 10}</span>
+            )}
           </div>
         </div>
       )}
@@ -204,6 +310,12 @@ export default function GameScreen({
           <h2 className="text-xl font-semibold mb-6 text-balance px-2">
             {trivia.question}
           </h2>
+          {/* Decision Timer (Timer A) */}
+          {!showFeedback && decisionTimeLeft !== null && decisionTimeLeft > 0 && (
+            <div className="text-sm text-gray-400 mb-2">
+              Tiempo restante: {decisionTimeLeft}s
+            </div>
+          )}
         </div>
       </div>
 
@@ -219,7 +331,7 @@ export default function GameScreen({
               transition-all duration-200
               active:scale-95
               ${getButtonStyle(index)}
-              ${selectedIndex === null ? "cursor-pointer" : "cursor-not-allowed"}
+              ${selectedIndex === null && !showFeedback ? "cursor-pointer" : "cursor-not-allowed"}
             `}
           >
             <span className="text-base">{option}</span>
@@ -240,11 +352,11 @@ export default function GameScreen({
             </p>
             <p className="text-xs opacity-90 mb-4">{trivia.funFact}</p>
             
-            {/* Timer and Next Button */}
+            {/* Transition Timer (Timer B) and Next Button */}
             <div className="flex items-center justify-center gap-3">
-              {timeLeft !== null && timeLeft > 0 && (
+              {transitionTimeLeft !== null && transitionTimeLeft > 0 && (
                 <div className="text-xs text-gray-400">
-                  Siguiente pregunta en {timeLeft}s
+                  Siguiente pregunta en {transitionTimeLeft}s
                 </div>
               )}
               <button

@@ -11,7 +11,7 @@ export class QuestionCache {
   private readonly minSize: number;
   private readonly targetSize: number;
 
-  constructor(minSize: number = 3, targetSize: number = 10) {
+  constructor(minSize: number = 2, targetSize: number = 10) {
     this.minSize = minSize;
     this.targetSize = targetSize;
   }

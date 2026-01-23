@@ -32,14 +32,15 @@ describe("Home Page - Category Selection", () => {
       extract: "Test content about the topic",
     });
     mockFetchFallbackData.mockResolvedValue(null);
-    // Mock batch generation (used when cache is empty)
+    // Mock batch generation (used when queue is empty) - returns 10 questions
+    const mockQuestions = Array.from({ length: 10 }, (_, i) => ({
+      question: `Test question ${i + 1}?`,
+      options: ["A", "B", "C", "D"] as [string, string, string, string],
+      correctAnswerIndex: i % 4,
+      funFact: `Test fact ${i + 1}`,
+    }));
     mockGenerateTriviaBatch.mockResolvedValue({
-      questions: [{
-        question: "Test question?",
-        options: ["A", "B", "C", "D"] as [string, string, string, string],
-        correctAnswerIndex: 0,
-        funFact: "Test fact",
-      }],
+      questions: mockQuestions,
       errors: [],
     });
     // Mock single question generation (fallback)

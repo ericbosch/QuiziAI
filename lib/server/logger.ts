@@ -10,8 +10,13 @@ const LOGS_DIR = path.join(process.cwd(), "logs");
 const LOG_FILE = path.join(LOGS_DIR, "quiziai.log");
 const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB
 
-// Ensure logs directory exists
+// Ensure logs directory exists (only in development)
 function ensureLogsDir() {
+  // Skip file system operations in production (e.g., Vercel)
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  
   if (typeof window === "undefined" && !fs.existsSync(LOGS_DIR)) {
     try {
       fs.mkdirSync(LOGS_DIR, { recursive: true });
@@ -22,8 +27,13 @@ function ensureLogsDir() {
   }
 }
 
-// Check if log file needs rotation
+// Check if log file needs rotation (only in development)
 function rotateLogIfNeeded() {
+  // Skip file system operations in production (e.g., Vercel)
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  
   if (typeof window !== "undefined") return; // Client-side, skip
 
   try {
@@ -41,8 +51,13 @@ function rotateLogIfNeeded() {
   }
 }
 
-// Write to log file (server-side only)
+// Write to log file (server-side only, development only)
 function writeToFile(level: string, message: string) {
+  // Skip file system operations in production (e.g., Vercel)
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  
   if (typeof window !== "undefined") return; // Client-side, skip file logging
 
   try {
