@@ -61,7 +61,7 @@ describe("HuggingFaceProvider", () => {
 
     expect(result).toEqual(mockTrivia);
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("router.huggingface.co"),
+      expect.stringContaining("router.huggingface.co/hf-inference/models"),
       expect.any(Object)
     );
   });

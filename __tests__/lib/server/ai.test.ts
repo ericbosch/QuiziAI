@@ -110,7 +110,7 @@ describe("AI Service", () => {
     expect(result).toEqual(mockTrivia);
     // Verify it's using the new router endpoint
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("router.huggingface.co"),
+      expect.stringContaining("router.huggingface.co/hf-inference/models"),
       expect.any(Object)
     );
   });

@@ -285,6 +285,7 @@ QuiziAI/
 - **Model:** `mistralai/Mistral-7B-Instruct-v0.2`
 - **API:** Inference API
 - **Env Var:** `HUGGINGFACE_API_KEY`
+- **Optional Override:** `HUGGINGFACE_MODEL` (must be supported by hf-inference)
 - **Quota:** ~300 req/hour (free tier)
 
 ### Data Sources (Client-Side)

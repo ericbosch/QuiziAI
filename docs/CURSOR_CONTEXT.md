@@ -204,6 +204,7 @@ const [answerHistory, setAnswerHistory] = useState([])
 GEMINI_API_KEY=...          # Primary (may hit quota: 15 RPM, 1M TPM)
 GROQ_API_KEY=...            # Fast fallback (free tier, ~560 tok/sec)
 HUGGINGFACE_API_KEY=...     # Rate-limited fallback (~300 req/hour)
+HUGGINGFACE_MODEL=...       # Optional HF model override (hf-inference supported only)
 ```
 
 **Provider Abstraction:**

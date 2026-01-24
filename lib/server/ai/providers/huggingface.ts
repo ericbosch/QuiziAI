@@ -13,10 +13,12 @@ const logger = createLogger("AI");
 export class HuggingFaceProvider implements AIProvider {
   readonly name = "Hugging Face";
   private readonly apiKey: string | null;
-  private readonly model: string = "mistralai/Mistral-7B-Instruct-v0.2";
+  private readonly model: string;
 
   constructor() {
     this.apiKey = process.env.HUGGINGFACE_API_KEY || null;
+    this.model =
+      process.env.HUGGINGFACE_MODEL?.trim() || "mistralai/Mistral-7B-Instruct-v0.2";
   }
 
   isAvailable(): boolean {
@@ -35,9 +37,9 @@ export class HuggingFaceProvider implements AIProvider {
     try {
       logger.log(`🤖 [HF] Trying Hugging Face API with ${this.model}...`);
       
-      // Use the new router endpoint
+      // Use the HF Inference router endpoint
       const response = await fetch(
-        `https://router.huggingface.co/models/${this.model}`,
+        `https://router.huggingface.co/hf-inference/models/${this.model}`,
         {
           method: "POST",
           headers: {

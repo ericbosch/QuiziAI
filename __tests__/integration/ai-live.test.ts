@@ -9,6 +9,7 @@ import { HuggingFaceProvider } from "@/lib/server/ai/providers/huggingface";
 import type { TriviaQuestion } from "@/lib/server/ai/types";
 
 const runLive = process.env.RUN_LIVE_AI_TESTS === "true";
+const enforceHf = process.env.RUN_HF_LIVE_TESTS === "true";
 const hasAnyKey = Boolean(
   process.env.GEMINI_API_KEY ||
     process.env.GROQ_API_KEY ||
@@ -80,6 +81,9 @@ if (!runLive) {
       const prompt = buildTriviaPrompt(baseContext);
       const result = await provider.generate(prompt, 1);
       if (!result) {
+        if (enforceHf) {
+          throw new Error("Hugging Face returned no result while RUN_HF_LIVE_TESTS=true.");
+        }
         console.warn("Hugging Face returned no result; skipping live test.");
         return;
       }

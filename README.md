@@ -51,12 +51,16 @@ GROQ_API_KEY=your_groq_api_key_here
 
 # Free fallback: Hugging Face (rate-limited, free tier)
 HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+
+# Optional: override HF model (must be supported by hf-inference)
+# HUGGINGFACE_MODEL=HuggingFaceTB/SmolLM3-3B
 ```
 
 **Get API keys:**
 - Gemini: https://makersuite.google.com/app/apikey
 - Groq: https://console.groq.com/keys (free tier, very fast)
 - Hugging Face: https://huggingface.co/settings/tokens (free tier, ~300 req/hour)
+  - Supported hf-inference models: https://huggingface.co/models?inference_provider=hf-inference&sort=trending
 
 The app will automatically try providers in order: Gemini → Groq → Hugging Face if quota is exceeded.
 
