@@ -52,18 +52,25 @@ describe("HuggingFaceProvider", () => {
 
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => [{
-        generated_text: JSON.stringify(mockTrivia),
-      }],
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify(mockTrivia),
+          },
+        }],
+      }),
     });
 
     const result = await provider.generate(prompt, 1);
 
     expect(result).toEqual(mockTrivia);
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("router.huggingface.co/hf-inference/models"),
+      expect.stringContaining("router.huggingface.co/v1/chat/completions"),
       expect.any(Object)
     );
+    const [, options] = (fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.model).toBe("HuggingFaceTB/SmolLM3-3B:hf-inference");
   });
 
   it("should handle API errors", async () => {
@@ -97,7 +104,11 @@ describe("HuggingFaceProvider", () => {
 
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => [{}],
+      json: async () => ({
+        choices: [{
+          message: {},
+        }],
+      }),
     });
 
     const result = await provider.generate(prompt, 1);
@@ -181,9 +192,13 @@ describe("HuggingFaceProvider", () => {
 
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => [{
-        generated_text: JSON.stringify(mockBatch),
-      }],
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify(mockBatch),
+          },
+        }],
+      }),
     });
 
     const result = await provider.generate(prompt, 2);

@@ -365,7 +365,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - **Provider Implementations:**
     - `lib/server/ai/providers/gemini.ts` - Gemini provider (REST API + SDK fallback)
     - `lib/server/ai/providers/groq.ts` - Groq provider (OpenAI-compatible API)
-    - `lib/server/ai/providers/huggingface.ts` - Hugging Face provider (fixed endpoint: router.huggingface.co)
+    - `lib/server/ai/providers/huggingface.ts` - Hugging Face provider (router `/v1/chat/completions`)
   - **Main Orchestrator** (`lib/server/ai/index.ts`): Coordinates provider fallback chain
     - Lazy provider initialization (checks env vars at call time)
     - Automatic fallback: Gemini → Groq → Hugging Face
@@ -376,7 +376,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - **Testability:** Providers can be mocked/tested independently
   - **Expansion:** Simple to add new AI providers (OpenAI, Anthropic, etc.)
 - **Fixes:**
-  - ✅ Hugging Face endpoint updated to `router.huggingface.co` (was deprecated `api-inference.huggingface.co`)
+  - ✅ Hugging Face provider uses router chat endpoint with `:hf-inference` model suffix
   - ✅ All providers now use unified prompt builder
   - ✅ Batch generation properly requests multiple questions in single API call
 - **Status:** ✅ Complete. Clean architecture, all tests passing (90/90), ready for expansion.

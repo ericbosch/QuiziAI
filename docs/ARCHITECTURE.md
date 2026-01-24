@@ -283,9 +283,10 @@ QuiziAI/
 
 **Hugging Face (Fallback 2)**
 - **Model:** `HuggingFaceTB/SmolLM3-3B`
-- **API:** Inference API
+- **API:** HF Inference router (OpenAI-compatible `/v1/chat/completions`)
 - **Env Var:** `HUGGINGFACE_API_KEY`
 - **Optional Override:** `HUGGINGFACE_MODEL` (must be supported by hf-inference)
+- **Model format:** `<model>:hf-inference` (suffix added by provider)
 - **Quota:** ~300 req/hour (free tier)
 
 ### Data Sources (Client-Side)

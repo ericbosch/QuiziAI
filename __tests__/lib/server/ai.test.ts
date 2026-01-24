@@ -100,9 +100,13 @@ describe("AI Service", () => {
     // HF succeeds
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => [{
-        generated_text: JSON.stringify(mockTrivia),
-      }],
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify(mockTrivia),
+          },
+        }],
+      }),
     });
 
     const result = await generateTriviaFromContent("Test content...");
@@ -110,7 +114,7 @@ describe("AI Service", () => {
     expect(result).toEqual(mockTrivia);
     // Verify it's using the new router endpoint
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("router.huggingface.co/hf-inference/models"),
+      expect.stringContaining("router.huggingface.co/v1/chat/completions"),
       expect.any(Object)
     );
   });
@@ -256,9 +260,13 @@ describe("AI Service", () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => [{
-          generated_text: "Invalid JSON {",
-        }],
+        json: async () => ({
+          choices: [{
+            message: {
+              content: "Invalid JSON {",
+            },
+          }],
+        }),
       });
 
     const result = await generateTriviaFromContent("Content");

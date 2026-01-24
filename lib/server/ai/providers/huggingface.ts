@@ -1,6 +1,6 @@
 /**
  * Hugging Face AI Provider Implementation
- * Uses the new router.huggingface.co endpoint
+ * Uses the HF Inference router (OpenAI-compatible chat endpoint)
  */
 
 import { AIProvider } from "./base";
@@ -36,26 +36,35 @@ export class HuggingFaceProvider implements AIProvider {
 
     try {
       logger.log(`🤖 [HF] Trying Hugging Face API with ${this.model}...`);
-      
-      // Use the HF Inference router endpoint
-      const response = await fetch(
-        `https://router.huggingface.co/hf-inference/models/${this.model}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${this.apiKey}`,
-          },
-          body: JSON.stringify({
-            inputs: prompt.userPrompt,
-            parameters: {
-              max_new_tokens: questionCount > 1 ? 2000 : 500, // More tokens for batches
-              temperature: 0.7,
-              return_full_text: false,
+
+      const userContent = prompt.userPrompt.includes("Contenido sobre el que crear la trivia:")
+        ? prompt.userPrompt.split("Contenido sobre el que crear la trivia:")[1]?.trim() || prompt.userPrompt
+        : prompt.userPrompt;
+
+      const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: `${this.model}:hf-inference`,
+          messages: [
+            {
+              role: "system",
+              content:
+                prompt.systemPrompt ||
+                "Eres un generador de preguntas de trivia. Responde ÚNICAMENTE con JSON válido, sin markdown, sin explicaciones.",
             },
-          }),
-        }
-      );
+            {
+              role: "user",
+              content: userContent,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: questionCount > 1 ? 2000 : 500,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -64,12 +73,14 @@ export class HuggingFaceProvider implements AIProvider {
       }
 
       const data = await response.json();
-      // HF API returns array with generated_text
-      const text = Array.isArray(data) && data[0]?.generated_text 
-        ? data[0].generated_text 
-        : typeof data === "string" 
-          ? data 
-          : data.generated_text || data[0]?.generated_text;
+      const text =
+        data.choices?.[0]?.message?.content ||
+        data.choices?.[0]?.text ||
+        (Array.isArray(data) && data[0]?.generated_text
+          ? data[0].generated_text
+          : typeof data === "string"
+            ? data
+            : data.generated_text || data[0]?.generated_text);
 
       if (!text) {
         logger.warn("⚠️ [HF] No generated text in response");
@@ -88,6 +99,7 @@ export class HuggingFaceProvider implements AIProvider {
   private parseResponse(text: string, isBatch: boolean): TriviaQuestion | TriviaQuestion[] {
     // Clean the response
     let cleanedText = text.trim();
+    cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
     if (cleanedText.startsWith("```json")) {
       cleanedText = cleanedText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
     } else if (cleanedText.startsWith("```")) {

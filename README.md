@@ -52,7 +52,8 @@ GROQ_API_KEY=your_groq_api_key_here
 # Free fallback: Hugging Face (rate-limited, free tier)
 HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 
-# Optional: override HF model (must be supported by hf-inference)
+# Optional: override HF model (must be supported by hf-inference text-generation)
+# The provider uses the HF router chat endpoint and appends ":hf-inference"
 # HUGGINGFACE_MODEL=HuggingFaceTB/SmolLM3-3B
 ```
 

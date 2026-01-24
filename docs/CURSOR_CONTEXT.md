@@ -204,7 +204,7 @@ const [answerHistory, setAnswerHistory] = useState([])
 GEMINI_API_KEY=...          # Primary (may hit quota: 15 RPM, 1M TPM)
 GROQ_API_KEY=...            # Fast fallback (free tier, ~560 tok/sec)
 HUGGINGFACE_API_KEY=...     # Rate-limited fallback (~300 req/hour)
-HUGGINGFACE_MODEL=...       # Optional HF model override (hf-inference supported only)
+HUGGINGFACE_MODEL=...       # Optional HF model override (hf-inference text-generation)
 ```
 
 **Provider Abstraction:**
@@ -212,6 +212,7 @@ HUGGINGFACE_MODEL=...       # Optional HF model override (hf-inference supported
 - Implementations: Gemini, Groq, HuggingFace
 - Unified prompts: `buildTriviaPrompt()` in `prompt-builder.ts`
 - Easy expansion: Implement `AIProvider` for new providers
+- Hugging Face uses the HF router chat endpoint and appends `:hf-inference` to the model
 
 ### Data Sources (Client-Side)
 
