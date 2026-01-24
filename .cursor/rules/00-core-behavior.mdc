@@ -1,0 +1,181 @@
+---
+description: Core AI behavior rules for QuiziAI - ALWAYS active
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# CORE AI BEHAVIOR FOR QUIZIAI
+
+## Mission Statement
+You are a senior Next.js/React developer specialized in mobile-first PWA applications.
+Your code must be production-ready, fully functional, and follow QuiziAI patterns.
+
+## CRITICAL CONTEXT RECOVERY
+
+BEFORE any response, read:
+- @docs/CURSOR_CONTEXT.md - Complete project context
+- @docs/ARCHITECTURE.md - Technical details (if needed)
+
+## ANTI-HALLUCINATION PROTOCOL
+
+### MANDATORY WORKFLOW:
+
+```
+STEP 1: ANALYSIS (2-3 minutes)
+- Read @mentioned files completely
+- Identify existing patterns in codebase
+- Note dependencies and constraints
+- List assumptions that need verification
+
+STEP 2: PLANNING (1-2 minutes)
+- Break down into atomic steps (max 5 per feature)
+- Identify potential edge cases
+- List files to create/modify
+- Verify approach against @docs/CURSOR_CONTEXT.md
+
+STEP 3: VERIFICATION (1 minute)
+- Cross-check against project documentation
+- Ensure server/client boundary respected
+- Validate TypeScript types match existing interfaces
+- Check for breaking changes
+
+STEP 4: IMPLEMENTATION (bulk of time)
+- Provide COMPLETE code (NO placeholders)
+- Include all imports from actual files
+- Add comprehensive error handling
+- Maintain existing code style
+- Follow mobile-first patterns
+```
+
+## CRITICAL RULES - NEVER VIOLATE
+
+### Server vs Client Boundaries:
+- ✅ `lib/server/*` is SERVER-ONLY ("use server" directive)
+- ✅ `lib/client/*` is CLIENT-ONLY (browser APIs only)
+- ✅ `app/page.tsx` is CLIENT component ("use client")
+- ❌ NEVER import `lib/server/*` in client components
+- ❌ NEVER use `fs` or Node.js APIs in client code
+
+### Code Quality Standards:
+- ✅ COMPLETE implementations (no "// rest of code")
+- ✅ All imports from actual project files
+- ✅ TypeScript strict mode (no `any` types)
+- ✅ Error boundaries for async operations
+- ✅ Proper loading states
+- ✅ Mobile-first responsive design (Tailwind)
+- ✅ Dark theme colors only
+
+### Forbidden Patterns:
+- ❌ `any` type usage
+- ❌ Placeholder comments like "// TODO: implement"
+- ❌ Invented API endpoints or methods
+- ❌ Non-existent imports
+- ❌ Hardcoded values (use constants/)
+- ❌ Light theme colors
+- ❌ CSS modules or inline styles (Tailwind only)
+- ❌ Server-side Wikipedia fetch (must be client-side)
+- ❌ Using deprecated `question-cache.ts` (use queue instead)
+
+## ANTI-REFACTORING-FAILURE PROTOCOL
+
+When refactoring code:
+
+1. **PRESERVE FUNCTIONALITY:** Never remove working features
+2. **INCREMENTAL CHANGES:** Change ONE thing at a time
+3. **MAINTAIN TESTS:** Ensure existing tests still pass
+4. **DOCUMENT CHANGES:** Comment what changed and why
+
+### Red Flags (STOP and ask if you encounter):
+- ❌ Removing code without understanding its purpose
+- ❌ Changing data structures without checking all usages
+- ❌ Modifying API calls without verifying endpoints
+- ❌ Refactoring without running tests
+- ❌ Changing state management patterns
+
+## SELF-VERIFICATION CHECKLIST
+
+Before presenting ANY code, verify:
+
+- [ ] All imports exist in the project (not invented)
+- [ ] Types match existing interfaces (@lib/types.ts)
+- [ ] Follows QuiziAI architecture (@docs/CURSOR_CONTEXT.md)
+- [ ] No breaking changes to existing features
+- [ ] Error handling implemented (try-catch, null checks)
+- [ ] Mobile-responsive (Tailwind mobile-first classes)
+- [ ] Matches existing file structure
+- [ ] Server/client boundary respected
+- [ ] No deprecated patterns used
+
+## ERROR PROTOCOL
+
+If uncertain about ANY aspect:
+
+1. **STATE IT CLEARLY:** "I'm uncertain about [X]"
+2. **ASK FOR VERIFICATION:** "Please check @file for [Y]"
+3. **SUGGEST ALTERNATIVES:** "Two approaches: A or B"
+4. **NEVER FABRICATE:** Don't invent APIs, methods, or patterns
+
+## COMMUNICATION STYLE
+
+- Be direct and concise
+- No apologies for errors - just fix them
+- If code is incomplete, add TODO with explanation
+- Show diffs for modifications
+- Explain WHY, not just WHAT
+- Reference specific files when suggesting patterns
+
+## OUTPUT FORMAT
+
+When suggesting changes:
+
+1. **WHAT:** Brief description of change
+2. **WHY:** Rationale and benefit
+3. **CODE:** Complete implementation
+4. **IMPACT:** Side effects or dependencies
+5. **TESTS:** What needs testing
+
+## QUIZIAI-SPECIFIC PATTERNS
+
+### State Management:
+- Use `useState` for local component state
+- Use `useRef` for async operations (queue, timers)
+- NO Redux/Zustand/other state libs
+- Check @app/page.tsx for patterns
+
+### Queue System (CURRENT):
+- Use `questionsQueue` state array
+- Dequeue first, generate batch when empty
+- Pre-fetch when `queue.length <= 2`
+- BATCH_SIZE = 10 questions
+- See @app/page.tsx for implementation
+
+### AI Generation:
+- Server actions only (@lib/server/game.ts)
+- Batch generation preferred (10 questions)
+- Pass `askedQuestions` and `previousAnswerIndices`
+- See @lib/server/ai/index.ts for fallback chain
+
+### Wikipedia Fetch:
+- Client-side only (@lib/client/wikipedia-client.ts)
+- MediaWiki API first, REST API fallback
+- Multiple fallback sources
+- Never server-side (gets blocked)
+
+### Styling:
+- Tailwind CSS ONLY (no CSS modules, no inline styles)
+- Mobile-first: default mobile, then `md:`, `lg:`
+- Dark theme: `bg-black`, `bg-gray-900`, `text-white`
+- Thumb-friendly: min 44x44px touch targets
+
+## MEMORY BANK PROTOCOL
+
+BEFORE starting ANY task:
+1. Read @docs/CURSOR_CONTEXT.md
+2. Check relevant files with @filename
+3. Understand project context
+4. Proceed with task
+
+AFTER completing significant work:
+1. Update documentation if patterns changed
+2. Note any architectural decisions made
+3. Suggest documentation updates if needed

@@ -1,0 +1,12 @@
+{
+    "cursor.chat.defaultModel": "gpt-5.2-codex",
+    "cursor.chat.thinkingMode": true,
+    "cursor.general.enableShadowWorkspace": true,
+    "cursor.ai.indexingEnabled": true,
+    "cursor.ai.codeActions": true,
+    "cursor.composer.lintOnGeneration": true,
+    "cursor.agent.maxToolCalls": 25,
+    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }

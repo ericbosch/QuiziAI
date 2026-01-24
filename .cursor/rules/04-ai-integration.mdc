@@ -1,0 +1,164 @@
+---
+description: AI integration patterns for QuiziAI
+globs: 
+  - "lib/ai/**/*"
+  - "lib/gemini*"
+alwaysApply: false
+---
+
+# AI INTEGRATION RULES
+
+## Provider Fallback Pattern (CRITICAL)
+
+QuiziAI uses multiple AI providers with automatic fallback:
+```
+Gemini (Primary) → Groq (Fast fallback) → HuggingFace (Free fallback)
+```
+
+### Implementation Pattern:
+```typescript
+const AI_PROVIDERS = [
+  { name: 'gemini', fn: callGemini },
+  { name: 'groq', fn: callGroq },
+  { name: 'huggingface', fn: callHuggingFace }
+] as const
+
+async function generateWithFallback(prompt: string) {
+  for (const provider of AI_PROVIDERS) {
+    try {
+      console.log(`[AI] Trying ${provider.name}...`)
+      const result = await provider.fn(prompt)
+      console.log(`[AI] ✓ ${provider.name} succeeded`)
+      return result
+    } catch (error) {
+      console.warn(`[AI] ✗ ${provider.name} failed:`, error)
+      // Continue to next provider
+    }
+  }
+  
+  throw new Error('All AI providers failed')
+}
+```
+
+## Prompt Engineering
+
+### Quiz Generation Prompt Structure:
+```typescript
+const prompt = `
+Generate a quiz based on this Wikipedia article.
+
+STRICT REQUIREMENTS:
+- Exactly ${questionCount} questions
+- 4 options per question (A, B, C, D)
+- Only ONE correct answer
+- Mix difficulty levels
+- Questions must be factual from the article
+
+ARTICLE:
+${articleText}
+
+RESPOND ONLY WITH VALID JSON:
+{
+  "questions": [
+    {
+      "question": "Question text",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": 0,
+      "funFact": "Related fact"
+    }
+  ]
+}
+`
+```
+
+### Response Validation:
+```typescript
+// ALWAYS validate AI responses
+const responseSchema = z.object({
+  questions: z.array(z.object({
+    question: z.string(),
+    options: z.array(z.string()).length(4),
+    correctAnswer: z.number().min(0).max(3),
+    funFact: z.string()
+  }))
+})
+
+try {
+  const validated = responseSchema.parse(aiResponse)
+} catch (error) {
+  // Handle invalid response
+  throw new Error('AI returned invalid format')
+}
+```
+
+## Error Handling
+
+### Quota Exceeded:
+```typescript
+// Gemini has free tier limits
+if (error.message.includes('quota') || 
+    error.message.includes('429')) {
+  console.warn('[AI] Quota exceeded, trying next provider')
+  // Fallback automatically handles this
+}
+```
+
+### Timeout Handling:
+```typescript
+const AI_TIMEOUT = 30000 // 30 seconds
+
+async function callWithTimeout(fn: () => Promise<any>) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT)
+  
+  try {
+    return await fn()
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+```
+
+## Response Parsing
+
+### JSON Extraction:
+```typescript
+// AI might include markdown code blocks
+function extractJSON(text: string) {
+  // Remove markdown code blocks if present
+  const cleaned = text
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim()
+  
+  return JSON.parse(cleaned)
+}
+```
+
+## Environment Variables
+
+### Required Variables:
+```typescript
+// At least ONE provider key required
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY
+
+// Validate at startup
+if (!GEMINI_API_KEY && !GROQ_API_KEY && !HUGGINGFACE_API_KEY) {
+  throw new Error('At least one AI provider API key required')
+}
+```
+
+## Logging
+
+### Structured Logging:
+```typescript
+console.log('[AI]', {
+  provider: 'gemini',
+  action: 'generate_quiz',
+  articleTitle: 'Article Name',
+  questionCount: 5,
+  duration: `${Date.now() - start}ms`
+})
+```

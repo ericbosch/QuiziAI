@@ -1,0 +1,183 @@
+---
+description: API route standards for QuiziAI
+globs: 
+  - "app/api/**/*"
+alwaysApply: false
+---
+
+# API ROUTES FOR QUIZIAI
+
+## Standard API Route Structure
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod' // For validation
+
+// Input validation schema
+const requestSchema = z.object({
+  field: z.string().min(1),
+  // ... more fields
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Parse and validate input
+    const body = await request.json()
+    const validatedData = requestSchema.parse(body)
+    
+    // 2. Process request
+    const result = await processData(validatedData)
+    
+    // 3. Return success response
+    return NextResponse.json(
+      { data: result },
+      { status: 200 }
+    )
+    
+  } catch (error) {
+    // 4. Error handling
+    console.error('[API_ERROR]', {
+      route: '/api/route-name',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    })
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## QuiziAI Specific Patterns
+
+### Quiz Generation API (@app/api/quiz/route.ts):
+```typescript
+// MUST follow existing pattern
+// 1. Fetch Wikipedia article
+// 2. Try AI providers in order (Gemini → Groq → HuggingFace)
+// 3. Parse and validate AI response
+// 4. Return structured quiz data
+
+// Check @app/api/quiz/route.ts for current implementation
+// DO NOT change provider fallback logic without discussion
+```
+
+### Wikipedia API (@app/api/wiki/route.ts):
+```typescript
+// MUST use Spanish Wikipedia
+// Implement retry logic (3 attempts)
+// Cache responses if possible
+// Handle disambiguation pages
+
+// Check @app/api/wiki/route.ts for current implementation
+```
+
+## Error Handling Standards
+
+### Error Types:
+```typescript
+// Validation errors
+if (!isValid) {
+  return NextResponse.json(
+    { error: 'Invalid input', field: 'fieldName' },
+    { status: 400 }
+  )
+}
+
+// Not found
+if (!resource) {
+  return NextResponse.json(
+    { error: 'Resource not found' },
+    { status: 404 }
+  )
+}
+
+// Rate limiting
+if (isRateLimited) {
+  return NextResponse.json(
+    { error: 'Too many requests' },
+    { status: 429 }
+  )
+}
+
+// Server error
+return NextResponse.json(
+  { error: 'Internal server error' },
+  { status: 500 }
+)
+```
+
+## Logging Standards
+```typescript
+// Always log:
+// - API route name
+// - Error message
+// - Timestamp
+// - Relevant context
+
+console.error('[API_ROUTE_NAME_ERROR]', {
+  message: error.message,
+  stack: error.stack,
+  input: sanitizedInput, // Remove sensitive data
+  timestamp: new Date().toISOString()
+})
+```
+
+## Response Format
+
+### Success:
+```typescript
+return NextResponse.json({
+  data: {
+    // Actual data
+  },
+  metadata: { // Optional
+    timestamp: new Date().toISOString(),
+    version: '1.0'
+  }
+})
+```
+
+### Error:
+```typescript
+return NextResponse.json({
+  error: 'User-friendly message',
+  code: 'ERROR_CODE', // Optional
+  details: {} // Optional, for validation errors
+})
+```
+
+## Performance
+
+### Timeouts:
+```typescript
+// Set reasonable timeouts
+const controller = new AbortController()
+const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s
+
+try {
+  const response = await fetch(url, {
+    signal: controller.signal
+  })
+} finally {
+  clearTimeout(timeoutId)
+}
+```
+
+### Caching:
+```typescript
+// For static data
+export const revalidate = 3600 // 1 hour
+
+// For dynamic with caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 60 // 1 minute
+```

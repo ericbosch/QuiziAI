@@ -1,0 +1,277 @@
+---
+description: React component standards for QuiziAI
+globs: 
+  - "components/**/*.tsx"
+  - "app/**/*.tsx"
+alwaysApply: false
+---
+
+# REACT COMPONENT RULES FOR QUIZIAI
+
+## Component Structure Template
+```typescript
+'use client' // Only if needs client-side features
+
+import { useState } from 'react' // Hooks if needed
+import type { ComponentProps } from '@/lib/types' // Types
+
+interface Props {
+  // ALWAYS define props interface
+  // Use descriptive names
+  // Add JSDoc comments for complex props
+}
+
+/**
+ * Component description
+ * @example
+ * <ComponentName prop="value" />
+ */
+export function ComponentName({ 
+  prop1,
+  prop2 = defaultValue, // Default values in destructuring
+}: Props) {
+  // 1. Hooks (in order: useState, useEffect, custom hooks)
+  const [state, setState] = useState<Type>(initialValue)
+  
+  // 2. Derived state / computations
+  const derivedValue = useMemo(() => computation(state), [state])
+  
+  // 3. Event handlers
+  const handleEvent = useCallback(() => {
+    // Handler logic
+  }, [dependencies])
+  
+  // 4. Effects
+  useEffect(() => {
+    // Effect logic
+    return () => {
+      // Cleanup
+    }
+  }, [dependencies])
+  
+  // 5. Early returns for loading/error states
+  if (isLoading) return <LoadingSpinner />
+  if (error) return <ErrorMessage error={error} />
+  
+  // 6. Render
+  return (
+    <div className="mobile-first-styles">
+      {/* JSX */}
+    </div>
+  )
+}
+```
+
+## QuiziAI Specific Patterns
+
+### Game State Management:
+```typescript
+// Use useState for local component state
+// NO Redux/Zustand unless app grows significantly
+// Check existing components/Game.tsx for patterns
+
+interface GameState {
+  currentQuestion: number
+  score: number
+  timeLeft: number
+  // ... reference @components/Game.tsx
+}
+```
+
+### Button Components:
+```typescript
+// QuiziAI uses thumb-friendly mobile-first buttons
+// Check @components/ui/Button.tsx for standard
+
+interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'danger'
+  size?: 'sm' | 'md' | 'lg'
+  isLoading?: boolean
+  onClick: () => void
+}
+
+// Always include:
+// - Loading state
+// - Disabled state when loading
+// - Proper Tailwind classes
+// - Touch-friendly sizing (min 44x44px)
+```
+
+### Form Handling:
+```typescript
+// QuiziAI doesn't use react-hook-form yet
+// Use controlled components with useState
+
+const [value, setValue] = useState('')
+
+<input
+  value={value}
+  onChange={(e) => setValue(e.target.value)}
+  className="w-full p-4 text-lg" // Mobile-first sizing
+/>
+```
+
+## Styling Rules
+
+### Tailwind (ONLY):
+```typescript
+// ✅ Good
+<div className="flex flex-col gap-4 p-6 bg-gray-900">
+
+// ❌ Bad (no inline styles, no CSS modules)
+<div style={{ display: 'flex' }}>
+<div className={styles.container}>
+```
+
+### Mobile-First Responsive:
+```typescript
+// Default: Mobile
+// Then: Tablet (md:)
+// Then: Desktop (lg:)
+
+<div className="
+  p-4           // Mobile: 1rem padding
+  md:p-6        // Tablet: 1.5rem
+  lg:p-8        // Desktop: 2rem
+  text-base     // Mobile: 16px
+  md:text-lg    // Tablet: 18px
+">
+```
+
+### Dark Theme:
+```typescript
+// QuiziAI uses dark theme by default
+// Always use dark-compatible colors
+
+// ✅ Good
+className="bg-gray-900 text-white"
+
+// ❌ Bad
+className="bg-white text-black"
+```
+
+## Performance Optimizations
+
+### Memoization:
+```typescript
+// Only memoize if:
+// 1. Expensive computation
+// 2. Passed as prop to memoized child
+// 3. Actually measured performance issue
+
+// ✅ Good use case
+const expensiveValue = useMemo(() => {
+  return complexCalculation(data)
+}, [data])
+
+// ❌ Premature optimization
+const simpleValue = useMemo(() => value * 2, [value])
+```
+
+### Callbacks:
+```typescript
+// Use useCallback for functions passed to children
+const handleClick = useCallback(() => {
+  // Handler
+}, [dependencies])
+
+<ChildComponent onClick={handleClick} />
+```
+
+## Error Handling
+
+### Always wrap async operations:
+```typescript
+const [error, setError] = useState<Error | null>(null)
+const [isLoading, setIsLoading] = useState(false)
+
+const fetchData = async () => {
+  setIsLoading(true)
+  setError(null)
+  
+  try {
+    const data = await api.fetch()
+    // Success handling
+  } catch (err) {
+    setError(err as Error)
+    console.error('[FETCH_ERROR]', err)
+  } finally {
+    setIsLoading(false)
+  }
+}
+```
+
+### Error Boundaries:
+```typescript
+// For critical components, wrap in error boundary
+// Check if QuiziAI has ErrorBoundary component
+
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <CriticalComponent />
+</ErrorBoundary>
+```
+
+## TypeScript Standards
+
+### Props Types:
+```typescript
+// ✅ Use interface for component props
+interface Props {
+  required: string
+  optional?: number
+  callback: (value: string) => void
+}
+
+// ❌ Don't use type for props
+type Props = {
+  // ...
+}
+```
+
+### Event Handlers:
+```typescript
+// ✅ Proper typing
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setValue(e.target.value)
+}
+
+// ❌ Any type
+const handleChange = (e: any) => {
+```
+
+### Children Prop:
+```typescript
+interface Props {
+  children: React.ReactNode // Preferred
+  // OR
+  children: JSX.Element | JSX.Element[]
+}
+```
+
+## Testing Considerations
+```typescript
+// Add data-testid for integration tests
+<button data-testid="submit-answer-button">
+  Submit
+</button>
+
+// Use semantic HTML for accessibility
+<button> instead of <div onClick>
+<label> with <input>
+```
+
+## Accessibility (a11y)
+```typescript
+// Always include:
+// - ARIA labels for icon-only buttons
+// - Alt text for images
+// - Semantic HTML
+// - Keyboard navigation support
+
+<button
+  aria-label="Submit answer"
+  onClick={handleSubmit}
+>
+  <CheckIcon />
+</button>
+```

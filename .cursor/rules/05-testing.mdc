@@ -1,0 +1,72 @@
+---
+description: Testing standards for QuiziAI
+globs: 
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "__tests__/**/*"
+alwaysApply: false
+---
+
+# TESTING RULES FOR QUIZIAI
+
+## Test Structure (Jest + React Testing Library)
+```typescript
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { ComponentName } from './ComponentName'
+
+describe('ComponentName', () => {
+  const defaultProps = {
+    prop1: 'value',
+    prop2: jest.fn()
+  }
+  
+  it('should render correctly', () => {
+    render(<ComponentName {...defaultProps} />)
+    expect(screen.getByText('Expected Text')).toBeInTheDocument()
+  })
+  
+  it('should handle user interaction', async () => {
+    render(<ComponentName {...defaultProps} />)
+    const button = screen.getByRole('button', { name: 'Submit' })
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(defaultProps.prop2).toHaveBeenCalled()
+    })
+  })
+})
+```
+
+## Testing Priorities
+
+### MUST TEST:
+1. API Routes - All endpoints
+2. Core Game Logic - Quiz generation, scoring
+3. AI Integration - Provider fallback
+4. Critical User Flows - Start → Answer → Results
+
+### OPTIONAL:
+1. UI edge cases
+2. Accessibility
+3. Performance
+
+## Mocking
+```typescript
+// AI Providers
+jest.mock('@/lib/ai/gemini', () => ({
+  callGemini: jest.fn().mockResolvedValue({ questions: [] })
+}))
+
+// Wikipedia API
+jest.mock('@/lib/wiki', () => ({
+  fetchWikipediaArticle: jest.fn().mockResolvedValue({
+    title: 'Mock',
+    content: 'Content'
+  })
+}))
+```
+
+## Coverage Goals
+- Overall: 80%+
+- Statements: 80%+
+- Branches: 70%+
+- Functions: 80%+

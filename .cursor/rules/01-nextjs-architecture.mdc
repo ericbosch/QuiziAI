@@ -1,0 +1,157 @@
+---
+description: Next.js 14 App Router architecture for QuiziAI
+globs: 
+  - "app/**/*"
+  - "*.config.*"
+alwaysApply: false
+---
+
+# NEXT.JS 14 ARCHITECTURE RULES
+
+## App Router Structure
+QuiziAI uses Next.js 14 App Router with specific conventions:
+
+### Directory Structure:
+```
+app/
+├── layout.tsx            # Root layout (Server Component)
+├── page.tsx              # Main game page (Client Component)
+└── globals.css           # Global styles (dark theme)
+```
+
+## Component Rules
+
+### Server vs Client Components:
+- **DEFAULT**: All components are Server Components
+- **Client Components ONLY when**:
+  - Uses hooks (useState, useEffect, useReducer)
+  - Needs event handlers (onClick, onChange)
+  - Uses browser APIs (localStorage, window)
+  - Requires real-time updates
+
+### Client Component Pattern:
+```typescript
+'use client'
+
+import { useState } from 'react'
+
+interface Props {
+  // Always define props interface
+}
+
+export function ComponentName({ ...props }: Props) {
+  // Implementation
+}
+```
+
+### Server Component Pattern:
+```typescript
+// NO 'use client' directive
+
+interface Props {
+  // Props interface
+}
+
+export default function ComponentName({ ...props }: Props) {
+  // Can use async/await directly
+  // Can fetch data here
+}
+```
+
+## API Routes (Optional)
+
+### Structure:
+```typescript
+// app/api/[route]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    
+    // Validate input
+    // Process request
+    // Return response
+    
+    return NextResponse.json({ data }, { status: 200 })
+  } catch (error) {
+    console.error('[API_ROUTE_ERROR]', error)
+    return NextResponse.json(
+      { error: 'Error message' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+### Current QuiziAI Usage:
+- No `app/api/*` route handlers are implemented.
+- AI generation uses server actions in `lib/server/game.ts`.
+- Wikipedia fetching is client-side only in `lib/client/*`.
+
+## QuiziAI Specific Patterns
+
+### AI Provider Fallback Chain:
+When working with AI integrations, always implement fallback:
+```typescript
+// lib/server/ai/index.ts pattern
+function getProviders() {
+  return [new GeminiProvider(), new GroqProvider(), new HuggingFaceProvider()]
+}
+```
+
+### Wikipedia Integration:
+```typescript
+// Use client-side fetching only (Wikipedia blocks server requests)
+// lib/client/wikipedia-client.ts for Spanish Wikipedia
+// lib/client/fallback-data.ts for English Wikipedia + DuckDuckGo
+```
+
+## File Naming Conventions:
+- Routes: `page.tsx`, `layout.tsx`, `route.ts`
+- Components: `PascalCase.tsx`
+- Utilities: `camelCase.ts`
+- Types: `types.ts` in relevant directory
+- Constants: `UPPER_SNAKE_CASE` in constants/
+
+## Import Order (enforce strictly):
+```typescript
+// 1. React/Next.js
+import { useState } from 'react'
+import Image from 'next/image'
+
+// 2. Third-party libraries
+import clsx from 'clsx'
+
+// 3. Internal components
+import { Button } from '@/components/ui/Button'
+
+// 4. Utils/lib
+import { fetchQuiz } from '@/lib/quiz'
+
+// 5. Types
+import type { Question } from '@/lib/types'
+
+// 6. Constants
+import { GAME_CONFIG } from '@/constants/game'
+
+// 7. Styles (if any)
+import styles from './styles.module.css'
+```
+
+## Performance Rules:
+- Use Next.js Image component for all images
+- Implement proper loading states
+- Use React.memo for expensive components
+- Lazy load non-critical components
+- Optimize bundle size (check with `npm run build`)
+
+## Metadata (SEO):
+```typescript
+// app/layout.tsx or page.tsx
+export const metadata = {
+  title: 'QuiziAI - Infinite AI Trivia',
+  description: 'AI-powered trivia using Wikipedia',
+  // ... more metadata
+}
+```
