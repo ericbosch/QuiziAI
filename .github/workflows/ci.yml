@@ -27,21 +27,39 @@ jobs:
   ai-live:
     runs-on: ubuntu-latest
     needs: unit
-    if: github.ref == 'refs/heads/main' && (secrets.GEMINI_API_KEY != '' || secrets.GROQ_API_KEY != '' || secrets.HUGGINGFACE_API_KEY != '')
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check live AI secrets
+        id: secrets
+        run: |
+          if [ -n "$GEMINI_API_KEY" ] || [ -n "$GROQ_API_KEY" ] || [ -n "$HUGGINGFACE_API_KEY" ]; then
+            echo "hasSecrets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hasSecrets=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
       - name: Setup Node
+        if: steps.secrets.outputs.hasSecrets == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
       - name: Install dependencies
+        if: steps.secrets.outputs.hasSecrets == 'true'
         run: npm ci
       - name: Live AI integration tests
+        if: steps.secrets.outputs.hasSecrets == 'true'
         run: npm run test:integration:ai
         env:
           RUN_LIVE_AI_TESTS: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
+      - name: Skip live AI tests (no secrets)
+        if: steps.secrets.outputs.hasSecrets != 'true'
+        run: echo "No AI secrets available; skipping live provider tests."
