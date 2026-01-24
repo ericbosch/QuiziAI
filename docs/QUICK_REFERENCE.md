@@ -131,11 +131,11 @@ tail -f logs/quiziai.log
 |--------|--------|---------|
 | `lib/server/ai` | 95%+ | 98.36% ✅ |
 | `lib/server` | 85%+ | 88.07% ✅ |
-| `components` | 80%+ | 79.73% ✅ |
-| `lib/client` | 75%+ | 74.28% ⚠️ |
-| Overall | 80%+ | 68.11% ⚠️ |
+| `components` | 80%+ | 79.08% ✅ |
+| `lib/client` | 75%+ | 91.22% ✅ |
+| Overall | 80%+ | 82.76% ✅ |
 
-**Note:** `app/page.tsx` (48%) is covered by E2E tests.
+**Note:** `app/page.tsx` (84.25%) is covered by E2E tests.
 
 ---
 

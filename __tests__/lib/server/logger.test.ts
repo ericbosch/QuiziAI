@@ -17,18 +17,19 @@ jest.mock("path", () => ({
 }));
 
 // Mock window to be undefined (server-side)
-const originalWindow = global.window;
+const globalWithWindow = global as typeof globalThis & { window?: Window };
+const originalWindow = globalWithWindow.window;
 beforeAll(() => {
-  delete (global as any).window;
+  delete globalWithWindow.window;
 });
 afterAll(() => {
-  global.window = originalWindow;
+  globalWithWindow.window = originalWindow;
 });
 
 describe("Logger", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete (global as any).window;
+    delete globalWithWindow.window;
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.statSync as jest.Mock).mockReturnValue({ size: 1000 });
   });

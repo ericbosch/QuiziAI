@@ -7,6 +7,15 @@ jest.mock("@/lib/client/wikipedia-client");
 jest.mock("@/lib/client/fallback-data");
 jest.mock("@/lib/server/game");
 
+jest.mock("@/constants/topics", () => {
+  const actual = jest.requireActual("@/constants/topics");
+  return {
+    ...actual,
+    getRandomTopicFromCategory: jest.fn(actual.getRandomTopicFromCategory),
+    getRandomTopicFromAnyCategory: jest.fn(actual.getRandomTopicFromAnyCategory),
+  };
+});
+
 const mockFetchWikipediaSummaryClient = require("@/lib/client/wikipedia-client").fetchWikipediaSummaryClient;
 const mockFetchFallbackData = require("@/lib/client/fallback-data").fetchFallbackData;
 const mockGenerateTriviaFromContentServer = require("@/lib/server/game").generateTriviaFromContentServer;
@@ -208,6 +217,330 @@ describe("Home Page - Game Flow", () => {
       expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledWith("Test Topic");
       // Batch generation should be called
       expect(mockGenerateTriviaBatch).toHaveBeenCalled();
+    });
+  });
+
+  it("should ignore Enter when topic is blank", () => {
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(mockFetchWikipediaSummaryClient).not.toHaveBeenCalled();
+    expect(screen.queryByText("Generando trivia...")).not.toBeInTheDocument();
+  });
+
+  it("should show error when Wikipedia fetch throws", async () => {
+    mockFetchWikipediaSummaryClient.mockRejectedValueOnce(new Error("Boom"));
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Error al cargar la trivia/i)).toBeInTheDocument();
+    });
+  });
+
+  it("should show error when single fallback returns no trivia and no error", async () => {
+    mockGenerateTriviaBatch.mockResolvedValueOnce({
+      questions: [],
+      errors: [],
+    });
+    mockGenerateTriviaFromContentServer.mockResolvedValueOnce({
+      trivia: null,
+      error: null,
+    });
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No se pudo generar la trivia. Intenta de nuevo.")
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("should skip duplicate questions in queue and use next", async () => {
+    const duplicateQuestion = {
+      question: "Duplicate question?",
+      options: ["A", "B", "C", "D"] as [string, string, string, string],
+      correctAnswerIndex: 0,
+      funFact: "Duplicate fact",
+    };
+    const nextQuestion = {
+      question: "Fresh question?",
+      options: ["A", "B", "C", "D"] as [string, string, string, string],
+      correctAnswerIndex: 1,
+      funFact: "Fresh fact",
+    };
+
+    mockGenerateTriviaBatch.mockReset();
+    mockGenerateTriviaBatch
+      .mockResolvedValueOnce({
+        questions: [duplicateQuestion, duplicateQuestion, nextQuestion],
+        errors: [],
+      })
+      .mockResolvedValue({ questions: [], errors: [] });
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Duplicate question?")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("A"));
+    fireEvent.click(screen.getByText("Siguiente pregunta"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Fresh question?")).toBeInTheDocument();
+    });
+  });
+
+  it("should fetch new topic when queue empty and category selected", async () => {
+    const topicA = "Topic A";
+    const topicB = "Topic B";
+
+    (topicsModule.getRandomTopicFromCategory as jest.Mock)
+      .mockReturnValueOnce(topicA)
+      .mockReturnValueOnce(topicB);
+
+    mockGenerateTriviaBatch.mockReset();
+    mockGenerateTriviaBatch
+      .mockResolvedValueOnce({
+        questions: [
+          {
+            question: "Category question 1?",
+            options: ["A", "B", "C", "D"] as [string, string, string, string],
+            correctAnswerIndex: 0,
+            funFact: "Cat fact 1",
+          },
+        ],
+        errors: [],
+      })
+      .mockResolvedValueOnce({ questions: [], errors: [] })
+      .mockResolvedValueOnce({
+        questions: [
+          {
+            question: "Category question 2?",
+            options: ["A", "B", "C", "D"] as [string, string, string, string],
+            correctAnswerIndex: 1,
+            funFact: "Cat fact 2",
+          },
+        ],
+        errors: [],
+      })
+      .mockResolvedValue({ questions: [], errors: [] });
+
+    render(<Home />);
+
+    fireEvent.click(screen.getByText("🏛️ Historia"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Category question 1?")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("A"));
+    fireEvent.click(screen.getByText("Siguiente pregunta"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Category question 2?")).toBeInTheDocument();
+    });
+
+    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledWith(topicA);
+    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledWith(topicB);
+  });
+
+  it("should prefetch when queue is low and surface RATE_LIMIT", async () => {
+    mockGenerateTriviaBatch.mockReset();
+    mockGenerateTriviaBatch
+      .mockResolvedValueOnce({
+        questions: [
+          {
+            question: "Prefetch question 1?",
+            options: ["A", "B", "C", "D"] as [string, string, string, string],
+            correctAnswerIndex: 0,
+            funFact: "Prefetch fact 1",
+          },
+          {
+            question: "Prefetch question 2?",
+            options: ["A", "B", "C", "D"] as [string, string, string, string],
+            correctAnswerIndex: 1,
+            funFact: "Prefetch fact 2",
+          },
+        ],
+        errors: [],
+      })
+      .mockResolvedValueOnce({
+        questions: [
+          {
+            question: "Prefetch question 3?",
+            options: ["A", "B", "C", "D"] as [string, string, string, string],
+            correctAnswerIndex: 2,
+            funFact: "Prefetch fact 3",
+          },
+        ],
+        errors: ["RATE_LIMIT"],
+      })
+      .mockResolvedValue({ questions: [], errors: [] });
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Prefetch question 1?")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Servicio temporalmente no disponible")
+      ).toBeInTheDocument();
+    });
+
+    expect(mockGenerateTriviaBatch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should retry using queued questions without regenerating batch", async () => {
+    const batchQuestions = Array.from({ length: 5 }, (_, i) => ({
+      question: `Retry question ${i + 1}?`,
+      options: ["A", "B", "C", "D"] as [string, string, string, string],
+      correctAnswerIndex: 0,
+      funFact: `Retry fact ${i + 1}`,
+    }));
+
+    mockGenerateTriviaBatch.mockReset();
+    mockGenerateTriviaBatch
+      .mockResolvedValueOnce({
+        questions: batchQuestions,
+        errors: ["RATE_LIMIT"],
+      })
+      .mockResolvedValue({ questions: [], errors: [] });
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Retry question 1?")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Reintentar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Retry question 2?")).toBeInTheDocument();
+    });
+
+    expect(mockGenerateTriviaBatch).toHaveBeenCalled();
+    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledTimes(2);
+  });
+
+  it("should use queued question on next question without refetching", async () => {
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Test question 1?")).toBeInTheDocument();
+    });
+
+    // Answer to reveal "Siguiente pregunta"
+    fireEvent.click(screen.getByText("A"));
+    fireEvent.click(screen.getByText("Siguiente pregunta"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Test question 2?")).toBeInTheDocument();
+    });
+
+    expect(mockGenerateTriviaBatch).toHaveBeenCalled();
+    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledTimes(1);
+  });
+
+  it("should regenerate batch from same content when queue is empty and no category", async () => {
+    const firstBatch = [
+      {
+        question: "Solo question 1?",
+        options: ["A", "B", "C", "D"] as [string, string, string, string],
+        correctAnswerIndex: 0,
+        funFact: "Solo fact 1",
+      },
+    ];
+    const secondBatch = [
+      {
+        question: "Solo question 2?",
+        options: ["A", "B", "C", "D"] as [string, string, string, string],
+        correctAnswerIndex: 1,
+        funFact: "Solo fact 2",
+      },
+    ];
+
+    mockGenerateTriviaBatch.mockReset();
+    mockGenerateTriviaBatch
+      .mockResolvedValueOnce({ questions: firstBatch, errors: [] })
+      .mockResolvedValueOnce({ questions: [], errors: [] })
+      .mockResolvedValueOnce({ questions: secondBatch, errors: [] });
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Solo question 1?")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("A"));
+    fireEvent.click(screen.getByText("Siguiente pregunta"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Solo question 2?")).toBeInTheDocument();
+    });
+
+    expect(mockGenerateTriviaBatch).toHaveBeenCalledTimes(3);
+    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledTimes(1);
+  });
+
+  it("should show rate limit notification when batch includes RATE_LIMIT", async () => {
+    mockGenerateTriviaBatch.mockResolvedValueOnce({
+      questions: [
+        {
+          question: "Rate limit question?",
+          options: ["A", "B", "C", "D"] as [string, string, string, string],
+          correctAnswerIndex: 0,
+          funFact: "Rate limit fact",
+        },
+      ],
+      errors: ["RATE_LIMIT"],
+    });
+
+    render(<Home />);
+
+    const input = screen.getByPlaceholderText(/Ej: Albert Einstein/) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Test Topic" } });
+    fireEvent.click(screen.getByText("Comenzar"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Servicio temporalmente no disponible")
+      ).toBeInTheDocument();
     });
   });
 

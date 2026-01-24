@@ -1,15 +1,15 @@
 # Test Coverage Report
 
-**Last Updated:** 2026-01-23
+**Last Updated:** 2026-01-24
 
 ## Overall Coverage
 
 | Metric | Coverage |
 |--------|----------|
-| **Statements** | 68.11% |
-| **Branches** | 66.88% |
-| **Functions** | 67.59% |
-| **Lines** | 68.53% |
+| **Statements** | 82.76% |
+| **Branches** | 74.40% |
+| **Functions** | 90.81% |
+| **Lines** | 82.89% |
 
 **Target:** 80% (not reached - main gap is `app/page.tsx` complex component)
 
@@ -20,26 +20,26 @@
 | `lib/server` | 88.07% | 75.86% | 93.75% | 89.65% |
 | `lib/server/ai` | 98.36% | 92.85% | 100% | 98.30% |
 | `lib/server/ai/providers` | 70.27% | 61.60% | 100% | 70.10% |
-| `lib/client` | 74.28% | 57.14% | 23.07% | 73.13% |
-| `components` | 79.73% | 80.21% | 91.30% | 80.00% |
-| `app/page.tsx` | 48.36% | 51.75% | 42.10% | 49.30% |
+| `lib/client` | 91.22% | 64.51% | 100% | 90.74% |
+| `components` | 79.08% | 82.41% | 86.95% | 79.33% |
+| `app/page.tsx` | 84.25% | 77.19% | 86.48% | 84.31% |
 
 ## Test Suite
 
-- **Unit Tests:** 132 tests passing
+- **Unit Tests:** 145 tests (144 passing, 1 skipped by default)
 - **E2E Tests:** 6 tests passing (Playwright)
-- **Total:** 138 tests
-- **Test Files:** 18 files
+- **Total:** 151 tests (+1 skipped live AI test)
+- **Test Files:** 16 files
 
 ## Coverage Analysis
 
 ### ✅ Well-Covered Modules
 - **`lib/server/ai`** (98.36%): Core AI logic fully tested
 - **`lib/server`** (88.07%): Server-side game logic well-tested
-- **`components`** (79.73%): UI components well-tested
+- **`components`** (79.08%): UI components well-tested
 
 ### ⚠️ Coverage Gaps
-- **`app/page.tsx`** (48.36%): Complex component with:
+- **`app/page.tsx`** (84.25%): Complex component with:
   - Multiple state variables and refs
   - Async operations and error handling
   - Queue management logic
@@ -53,7 +53,7 @@
 1. **Core Business Logic:** Already well-tested (88%+ coverage)
 2. **UI Component:** Complex state management makes unit testing challenging
 3. **E2E Coverage:** Playwright tests cover critical user flows
-4. **Acceptable Trade-off:** 68% unit coverage + E2E tests provides good confidence
+4. **Acceptable Trade-off:** 82.76% unit coverage + E2E tests provides good confidence
 
 ## Test Commands
 

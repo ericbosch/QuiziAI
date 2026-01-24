@@ -42,12 +42,12 @@
 
 ## ✅ Acceptance Criteria
 - [x] `npm run build` succeeds.
-- [x] 132 unit tests + 6 E2E tests pass (E2E tests require `npx playwright install chromium`).
+- [x] 145 unit tests + 6 E2E tests pass (1 live AI test skipped by default; E2E tests require `npx playwright install chromium`).
 - [x] UI/Content is exclusively in Spanish; Documentation/Logs in English.
-- [x] Test coverage: 68.11% (target: 80% - main gap is `app/page.tsx` complex component)
+- [x] Test coverage: 82.76% (target: 80% - main gap is `app/page.tsx` complex component)
 
 ## 📝 Implementation Notes
 - **Playwright Setup**: Run `npx playwright install chromium` before running E2E tests.
 - **Mock Provider**: Set `NEXT_PUBLIC_USE_MOCKS=true` in `.env.local` to use mock data.
 - **Jest Config**: E2E tests are excluded from Jest via `testPathIgnorePatterns`.
-- **Test Coverage**: Core business logic (`lib/server` at 88%, `lib/server/ai` at 98%) is well-tested. Main gap is UI component (`app/page.tsx` at 48%), which is covered by E2E tests.
+- **Test Coverage**: Core business logic (`lib/server` at 88%, `lib/server/ai` at 98%) is well-tested. Main gap is UI component (`app/page.tsx` at 84.25%), which is covered by E2E tests.

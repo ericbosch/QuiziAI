@@ -3,7 +3,7 @@
 **Project Status:** 🚀 Version 1.0.0-alpha - First Stable Release  
 **Deployment Date:** 2026-01-22  
 **Deployment URL:** https://quizi-ai.vercel.app/ (when deployed)  
-**Last Update:** 2026-01-23 - Core Refinement Plan complete: dual-timer system, dynamic loading messages, E2E tests, test coverage improvements (68.11%)  
+**Last Update:** 2026-01-24 - Core Refinement Plan complete: dual-timer system, dynamic loading messages, E2E tests, test coverage improvements (82.76%)  
 **Next Steps:** Phase 2 (Gemini-prioritized): 2.1 Haptic Feedback → 2.2 Persistence → 2.3 PWA Icons & Splash  
 **Concept:** AI-powered Trivia PWA using real-time scraping from specialized sources.  
 **Investment:** 0€ (Bootstrapped)  
@@ -65,7 +65,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - `generateTriviaBatch(content, count, previousQuestions, previousAnswerIndices)` for batch generation (10–20 questions)
   - Separated concerns: client fetches data, server generates AI
   - Comprehensive error messages
-- `lib/client/question-cache.ts`: In-memory cache utility (legacy, replaced by queue-based system)
+- **Question queue system** (`questionsQueue` in `app/page.tsx`) replaces the legacy cache approach
 - `components/ErrorNotification.tsx`: Popup for API failures (e.g. rate limit), retry support
 - `app/page.tsx`: Main game flow with exhaustive logging
   - Client-side data fetching orchestration
@@ -405,14 +405,14 @@ An infinite, personalized trivia experience where content is generated on the fl
     - 6 E2E tests covering: Load → Answer → Timeout → Pre-fetch → Progress bar → Loading messages
     - All E2E tests passing with mock provider
 - **Test Coverage Improvements:**
-  - Added tests for: Mock Provider, ErrorNotification, Game batch logic, AI providers (Groq, Hugging Face), AI index orchestrator
-  - **Coverage:** 68.11% (up from 59.1%)
+  - Added tests for: Mock Provider, ErrorNotification, Game batch logic, AI providers (Groq, Hugging Face), AI index orchestrator, Root layout
+  - **Coverage:** 82.76% (up from 59.1%)
     - `lib/server`: 88.07% ✅
     - `lib/server/ai`: 98.36% ✅
-    - `lib/client`: 74.28% ✅
-    - `components`: 79.73% ✅
-    - `app/page.tsx`: 48.36% (complex component, covered by E2E tests)
-  - **Total Tests:** 132 unit tests + 6 E2E tests = 138 tests passing
+    - `lib/client`: 91.22% ✅
+    - `components`: 79.08% ✅
+    - `app/page.tsx`: 84.25% (complex component, covered by E2E tests)
+  - **Total Tests:** 145 unit tests + 6 E2E tests = 151 tests passing (1 live AI test skipped by default)
 - **Status:** ✅ Complete. All phases implemented, all tests passing, production-ready.
 
 ### Git/SSH Authentication Setup ✅ NEW

@@ -50,10 +50,11 @@ STEP 4: IMPLEMENTATION (bulk of time)
 ## CRITICAL RULES - NEVER VIOLATE
 
 ### Server vs Client Boundaries:
-- ✅ `lib/server/*` is SERVER-ONLY ("use server" directive)
+- ✅ `lib/server/*` is SERVER-ONLY; server action entrypoints include `"use server"` (e.g. `lib/server/game.ts`)
 - ✅ `lib/client/*` is CLIENT-ONLY (browser APIs only)
 - ✅ `app/page.tsx` is CLIENT component ("use client")
-- ❌ NEVER import `lib/server/*` in client components
+- ✅ Client components MAY import server actions from `lib/server/*` (files with `"use server"`)
+- ❌ NEVER import other server-only modules (e.g. `lib/server/ai/*`, `lib/server/logger.ts`) into client components
 - ❌ NEVER use `fs` or Node.js APIs in client code
 
 ### Code Quality Standards:
@@ -74,7 +75,7 @@ STEP 4: IMPLEMENTATION (bulk of time)
 - ❌ Light theme colors
 - ❌ CSS modules or inline styles (Tailwind only)
 - ❌ Server-side Wikipedia fetch (must be client-side)
-- ❌ Using deprecated `question-cache.ts` (use queue instead)
+- ❌ Reintroducing `question-cache.ts` (removed; use queue instead)
 
 ## ANTI-REFACTORING-FAILURE PROTOCOL
 

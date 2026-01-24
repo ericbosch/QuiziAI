@@ -68,20 +68,20 @@ export function ComponentName({
 ```typescript
 // Use useState for local component state
 // NO Redux/Zustand unless app grows significantly
-// Check existing components/Game.tsx for patterns
+// Check existing app/page.tsx and components/GameScreen.tsx for patterns
 
 interface GameState {
   currentQuestion: number
   score: number
   timeLeft: number
-  // ... reference @components/Game.tsx
+  // ... reference app/page.tsx for queue + state patterns
 }
 ```
 
 ### Button Components:
 ```typescript
 // QuiziAI uses thumb-friendly mobile-first buttons
-// Check @components/ui/Button.tsx for standard
+// No shared button component yet - follow patterns in app/page.tsx and components/GameScreen.tsx
 
 interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'danger'

@@ -15,12 +15,12 @@
 - **Mobile-first:** Portrait mode, thumb-friendly, dark theme
 - **Resilient:** Multi-provider fallback chains (AI + data sources)
 - **Type-safe:** Strict TypeScript, no `any` types
-- **Well-tested:** 68.11% coverage (132 unit + 6 E2E tests)
+- **Well-tested:** 82.76% coverage (145 unit + 6 E2E tests; 1 live AI test skipped by default)
 
 **Status:**
 - Version: 1.0.0-alpha
 - Build: ✅ Passing
-- Tests: ✅ 138/138 passing
+- Tests: ✅ 145 unit + 6 E2E (1 live AI test skipped by default)
 - Deployment: Production-ready (Vercel)
 
 ---
@@ -56,14 +56,13 @@ QuiziAI/
 │   │   ├── wikipedia-client.ts # Wikipedia fetch (primary)
 │   │   ├── fallback-data.ts    # Backup data sources
 │   │   ├── mock-provider.ts    # Spanish mock questions (testing)
-│   │   └── question-cache.ts   # DEPRECATED (use queue instead)
 │   │
 │   └── types.ts                # Shared types
 │
 ├── constants/
 │   └── topics.ts               # 8 categories, 120 topics
 │
-├── __tests__/                  # 132 unit tests
+├── __tests__/                  # 145 unit tests
 ├── e2e/                        # 6 Playwright tests
 ├── scripts/                    # Dev/build scripts
 └── docs/                       # Documentation
@@ -75,10 +74,11 @@ QuiziAI/
 ```
 
 **CRITICAL RULES:**
-- ✅ `lib/server/*` is SERVER-ONLY (uses "use server" directive)
+- ✅ `lib/server/*` is SERVER-ONLY; server action entrypoints include `"use server"` (e.g. `lib/server/game.ts`)
 - ✅ `lib/client/*` is CLIENT-ONLY (browser APIs only)
 - ✅ `app/page.tsx` is CLIENT component ("use client")
-- ❌ NEVER import server code in client components
+- ✅ Client components MAY import server actions from `lib/server/*` (files with `"use server"`)
+- ❌ NEVER import other server-only modules (e.g. `lib/server/ai/*`, `lib/server/logger.ts`) into client components
 - ❌ NEVER use `fs` or Node.js APIs in client code
 
 ---
@@ -227,12 +227,12 @@ HUGGINGFACE_API_KEY=...     # Rate-limited fallback (~300 req/hour)
 ## 🧪 TESTING STRATEGY
 
 ### Test Coverage
-- **Total:** 138 tests (132 unit + 6 E2E)
-- **Coverage:** 68.11% overall
+- **Total:** 151 tests (145 unit + 6 E2E; 1 live AI test skipped by default)
+- **Coverage:** 82.76% overall
   - `lib/server/ai`: 98.36% ✅
   - `lib/server`: 88.07% ✅
-  - `components`: 79.73% ✅
-  - `app/page.tsx`: 48.36% (covered by E2E)
+  - `components`: 79.08% ✅
+  - `app/page.tsx`: 84.25% (covered by E2E)
 
 ### Test Commands
 ```bash
@@ -252,8 +252,8 @@ NEXT_PUBLIC_USE_MOCKS=true  # Use Spanish mock questions
 ## 🚨 CRITICAL GOTCHAS
 
 ### 1. Server vs Client Code
-❌ **NEVER** import `lib/server/*` in client components  
-✅ **ALWAYS** use server actions for AI operations  
+❌ **NEVER** import non-action server modules (e.g. `lib/server/ai/*`, `lib/server/logger.ts`) in client components  
+✅ **ALWAYS** use server actions for AI operations (`lib/server/game.ts`)  
 ✅ **ALWAYS** use client-side fetch for Wikipedia
 
 ### 2. State Update Delays
@@ -267,7 +267,7 @@ NEXT_PUBLIC_USE_MOCKS=true  # Use Spanish mock questions
 ✅ Clean up timers in `useEffect` return function
 
 ### 4. Question Queue
-❌ Don't use deprecated `question-cache.ts`  
+❌ Don't reintroduce `question-cache.ts` (removed)  
 ✅ Use `questionsQueue` state with refs  
 ✅ Pre-fetch when `queue.length ≤ 2`
 

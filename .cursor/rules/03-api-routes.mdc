@@ -58,27 +58,16 @@ export async function POST(request: NextRequest) {
 
 ## QuiziAI Specific Patterns
 
-### Quiz Generation API (@app/api/quiz/route.ts):
-```typescript
-// MUST follow existing pattern
-// 1. Fetch Wikipedia article
-// 2. Try AI providers in order (Gemini → Groq → HuggingFace)
-// 3. Parse and validate AI response
-// 4. Return structured quiz data
+### Current Status
+- No `app/api/*` routes are implemented in QuiziAI.
+- AI generation uses server actions in `lib/server/game.ts`.
+- Wikipedia fetching is client-side only in `lib/client/*` (server-side is blocked).
 
-// Check @app/api/quiz/route.ts for current implementation
-// DO NOT change provider fallback logic without discussion
-```
-
-### Wikipedia API (@app/api/wiki/route.ts):
-```typescript
-// MUST use Spanish Wikipedia
-// Implement retry logic (3 attempts)
-// Cache responses if possible
-// Handle disambiguation pages
-
-// Check @app/api/wiki/route.ts for current implementation
-```
+### If an API route is added (approval required)
+- Prefer server actions over API routes unless there is a clear need.
+- NEVER add a server-side Wikipedia fetch route.
+- Preserve the AI provider fallback chain (Gemini → Groq → HuggingFace).
+- Validate inputs and return structured responses.
 
 ## Error Handling Standards
 

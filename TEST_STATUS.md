@@ -1,17 +1,17 @@
 # Test Status Report
 
-## Coverage: 68.11% (Target: 80%)
+## Coverage: 82.76% (Target: 80%)
 
 ### Overall Coverage
-- **Statements:** 68.11%
-- **Branches:** 66.88%
-- **Functions:** 67.59%
-- **Lines:** 68.53%
+- **Statements:** 82.76%
+- **Branches:** 74.40%
+- **Functions:** 90.81%
+- **Lines:** 82.89%
 
 ## Test Results
 
-### Total Tests: 138
-- **Unit Tests:** 132 (passing)
+### Total Tests: 151 (+1 skipped live AI test)
+- **Unit Tests:** 145 (144 passing, 1 skipped by default)
 - **E2E Tests:** 6 (passing)
 - **Failing:** 0
 

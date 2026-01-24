@@ -13,7 +13,7 @@
 - **Mobile-first:** Optimized for portrait mode, thumb-friendly UI
 - **Resilient:** Multi-provider fallback system for AI and data sources
 - **Type-safe:** Strict TypeScript throughout
-- **Well-tested:** 68.11% coverage (132 unit + 6 E2E tests)
+- **Well-tested:** 82.76% coverage (145 unit + 6 E2E tests; 1 live AI test skipped by default)
 
 ---
 
@@ -46,13 +46,12 @@ QuiziAI/
 │   ├── client/                  # Client-only code
 │   │   ├── wikipedia-client.ts # Client-side Wikipedia fetch (primary)
 │   │   ├── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
-│   │   └── question-cache.ts   # In-memory cache utility (legacy, replaced by queue)
 │   └── types.ts                # Shared TypeScript types
 │
 ├── constants/
 │   └── topics.ts               # Curated topics by category (8 categories, 120 topics)
 │
-├── __tests__/                  # Test suite (138 tests, 68.11% coverage)
+├── __tests__/                  # Test suite (151 tests, 82.76% coverage)
 │   ├── app/                    # Page component tests
 │   ├── components/             # Component tests
 │   ├── lib/                    # Service unit tests
@@ -222,10 +221,6 @@ QuiziAI/
   - `generateTriviaBatch(content, count, previousQuestions, previousAnswerIndices)` → `{ questions, errors }`
 - **Returns:** `{ trivia: TriviaQuestion | null, error: string | null }` (single) or `{ questions, errors }` (batch)
 
-### `lib/client/question-cache.ts` (Deprecated)
-- **Type:** Client-side module
-- **Status:** Legacy cache utility; replaced by queue-based batching in `app/page.tsx`
-
 ### `components/ErrorNotification.tsx`
 - **Type:** Client component
 - **Purpose:** Popup for API failures (e.g. rate limit)
@@ -335,8 +330,8 @@ QuiziAI/
 
 ### Test Structure
 - **Framework:** Jest + React Testing Library
-- **Coverage:** 68.11% (Statements), 66.88% (Branches)
-- **Total Tests:** 138 (132 unit + 6 E2E)
+- **Coverage:** 82.76% (Statements), 74.40% (Branches)
+- **Total Tests:** 151 (145 unit + 6 E2E; 1 live AI test skipped by default)
 - **Live AI smoke tests:** `npm run test:integration:ai` (CI-only with keys)
 
 ### Test Files
@@ -425,8 +420,8 @@ QuiziAI/
 ## 📊 Key Metrics & Status
 
 - **Version:** 1.0.0-alpha
-- **Test Coverage:** 68.11% (Statements)
-- **Tests:** 138 total (132 unit + 6 E2E)
+- **Test Coverage:** 82.76% (Statements)
+- **Tests:** 151 total (145 unit + 6 E2E; 1 live AI test skipped by default)
 - **Build Status:** ✅ Passing
 - **Lint Status:** ✅ No errors
 - **TypeScript:** ✅ Strict mode

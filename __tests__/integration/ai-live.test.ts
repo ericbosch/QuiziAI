@@ -37,7 +37,11 @@ const validateTrivia = (result: TriviaQuestion | TriviaQuestion[] | null) => {
   expect(typeof trivia.funFact).toBe("string");
 };
 
-if (runLive) {
+if (!runLive) {
+  describe("Live AI provider smoke tests", () => {
+    test.skip("Set RUN_LIVE_AI_TESTS=true to enable live AI tests", () => {});
+  });
+} else {
   if (!hasAnyKey) {
     throw new Error("RUN_LIVE_AI_TESTS=true but no provider API keys were found.");
   }

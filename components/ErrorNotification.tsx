@@ -57,7 +57,7 @@ export default function ErrorNotification({
             {onRetry && (
               <button
                 onClick={onRetry}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800/60 hover:bg-gray-700/60 transition-colors"
               >
                 Reintentar
               </button>
@@ -65,7 +65,7 @@ export default function ErrorNotification({
             {onDismiss && (
               <button
                 onClick={onDismiss}
-                className="px-2 py-1 text-xs rounded-lg hover:bg-white/20 transition-colors"
+                className="px-2 py-1 text-xs rounded-lg hover:bg-gray-700/60 transition-colors"
                 aria-label="Cerrar"
               >
                 ✕

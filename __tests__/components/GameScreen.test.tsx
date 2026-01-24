@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import GameScreen from "@/components/GameScreen";
 import { TriviaQuestion } from "@/lib/types";
 
@@ -20,7 +20,7 @@ describe("GameScreen Component", () => {
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
+    jest.clearAllTimers();
     jest.useRealTimers();
   });
 
@@ -99,7 +99,9 @@ describe("GameScreen Component", () => {
     expect(screen.getByText("¡Correcto! ✓")).toBeInTheDocument();
 
     // Advance timer by 10 seconds (timer starts after feedback is shown)
-    jest.advanceTimersByTime(10000);
+    act(() => {
+      jest.advanceTimersByTime(10000);
+    });
 
     await waitFor(() => {
       expect(mockOnAnswer).toHaveBeenCalledWith(true);
@@ -153,7 +155,6 @@ describe("GameScreen Component", () => {
   });
 
   it("should not allow multiple selections", () => {
-    jest.useFakeTimers();
     render(
       <GameScreen trivia={mockTrivia} onAnswer={mockOnAnswer} onNextQuestion={mockOnNextQuestion} />
     );
@@ -164,7 +165,9 @@ describe("GameScreen Component", () => {
     if (button1) {
       fireEvent.click(button1);
       // Wait for state update
-      jest.advanceTimersByTime(100);
+      act(() => {
+        jest.advanceTimersByTime(100);
+      });
     }
     
     // onAnswer is NOT called immediately - it's called in handleNextQuestion
@@ -177,7 +180,6 @@ describe("GameScreen Component", () => {
     // Verify button1 triggered the selection (feedback should show)
     expect(screen.getByText("¡Correcto! ✓")).toBeInTheDocument();
     
-    jest.useRealTimers();
   });
 
   it("should display score when provided", () => {

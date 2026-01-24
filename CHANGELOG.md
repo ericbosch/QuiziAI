@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Marked project status as alpha and aligned documentation with current architecture
 - Documented queue-based batching, dual-timer gameplay, and provider fallback flow
-- Updated test/coverage reporting to include 132 unit + 6 E2E tests
+- Updated test/coverage reporting to include 145 unit + 6 E2E tests (1 live AI test skipped by default)
 
 ## [0.1.0] - 2026-01-22
 

@@ -1,8 +1,7 @@
 ---
 description: AI integration patterns for QuiziAI
 globs: 
-  - "lib/ai/**/*"
-  - "lib/gemini*"
+  - "lib/server/ai/**/*"
 alwaysApply: false
 ---
 

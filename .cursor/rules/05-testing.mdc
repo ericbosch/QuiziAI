@@ -52,15 +52,15 @@ describe('ComponentName', () => {
 ## Mocking
 ```typescript
 // AI Providers
-jest.mock('@/lib/ai/gemini', () => ({
-  callGemini: jest.fn().mockResolvedValue({ questions: [] })
+jest.mock('@/lib/server/ai/index', () => ({
+  generateTriviaFromContent: jest.fn().mockResolvedValue([])
 }))
 
 // Wikipedia API
-jest.mock('@/lib/wiki', () => ({
-  fetchWikipediaArticle: jest.fn().mockResolvedValue({
+jest.mock('@/lib/client/wikipedia-client', () => ({
+  fetchWikipediaSummaryClient: jest.fn().mockResolvedValue({
     title: 'Mock',
-    content: 'Content'
+    extract: 'Content'
   })
 }))
 ```
