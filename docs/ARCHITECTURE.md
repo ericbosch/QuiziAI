@@ -13,7 +13,7 @@
 - **Mobile-first:** Optimized for portrait mode, thumb-friendly UI
 - **Resilient:** Multi-provider fallback system for AI and data sources
 - **Type-safe:** Strict TypeScript throughout
-- **Well-tested:** 86%+ coverage, 93 tests
+- **Well-tested:** 68.11% coverage (132 unit + 6 E2E tests)
 
 ---
 
@@ -52,7 +52,7 @@ QuiziAI/
 ├── constants/
 │   └── topics.ts               # Curated topics by category (8 categories, 120 topics)
 │
-├── __tests__/                  # Test suite (93 tests, 86% coverage)
+├── __tests__/                  # Test suite (138 tests, 68.11% coverage)
 │   ├── app/                    # Page component tests
 │   ├── components/             # Component tests
 │   ├── lib/                    # Service unit tests
@@ -166,7 +166,7 @@ QuiziAI/
 - **Responsibilities:**
   - Game state management (topic, category, score, questions)
   - Data fetching orchestration (Wikipedia → fallback)
-  - Question cache usage (pop first; refill via batch when empty/low)
+  - Queue-based batching (dequeue first; refill via batch when empty/low)
   - AI generation trigger (server action; batch or single fallback)
   - Category selection UI
   - Manual topic input
@@ -177,13 +177,14 @@ QuiziAI/
   - `previousAnswerIndices`: Last correct-answer indices (for AI diversity)
   - `currentTopic`: Active topic for current question
   - `notificationError`: Current API error for ErrorNotification
-- **Key Refs:** `questionCacheRef`, `isRefillingCacheRef`, `currentContentRef`, `askedQuestionsRef`, `previousAnswerIndicesRef`
+- **Key Refs:** `questionsQueueRef`, `isFetchingBatchRef`, `currentContentRef`, `askedQuestionsRef`, `previousAnswerIndicesRef`, `loadingMessageIntervalRef`
 - **Key Functions:**
-  - `handleStartGame()`: Main game flow orchestrator (cache → batch → single fallback)
-  - `refillCache()` / `prefillCache()`: Background/pre-start cache refill
+  - `handleStartGame()`: Main game flow orchestrator (queue → batch → single fallback)
+  - `preFetchBatch()`: Background pre-fetch when queue is low
   - `handleCategorySelect()`: Category button handler
   - `handleSurpriseMe()`: Random category handler
   - `handleNextQuestion()`: Generate next question (same topic/category)
+  - `handleNewTopic()`: Reset state for new session
 
 ### `components/GameScreen.tsx` (Game UI)
 - **Type:** Client component
@@ -195,40 +196,35 @@ QuiziAI/
   - `score`: Current score object
   - `loading`: Loading state
 - **Features:**
-  - 10-second countdown timer (auto-advances)
+  - Dual timers: 15s decision + 10s transition
   - Manual "Siguiente pregunta" button
   - Visual feedback (green/red) with fun fact
   - Category display in header
-  - Progress bar
+  - Segmented progress bar
 
-### `lib/server/ai.ts` (AI Service)
+### `lib/server/ai/index.ts` (AI Orchestrator)
 - **Type:** Server-side only
-- **Exports:**
-  - `TriviaQuestion` interface
-  - `generateTriviaFromContent(content, previousQuestions, previousAnswerIndices)`
+- **Exports:** `generateTriviaFromContent()` + `TriviaQuestion` types
 - **Fallback Chain:**
   1. Gemini REST API v1 (direct fetch)
   2. Gemini SDK (fallback if REST fails)
   3. Groq API (Llama 3.1 8B)
   4. Hugging Face API (Mistral-7B)
-- **Key Functions:**
-  - `buildSystemPrompt(previousQuestions, previousAnswerIndices)`: Deduplication + vary correct-answer position
-  - `parseTriviaResponse(text)`: JSON extraction (handles markdown)
-  - `tryGroqAPI()` / `tryHuggingFaceAPI()`: Fallback implementations
+- **Related Files:**
+  - `lib/server/ai/prompt-builder.ts`: Unified prompt builder
+  - `lib/server/ai/providers/*`: Provider implementations and JSON parsing
 
 ### `lib/server/game.ts` (Server Action Wrapper)
 - **Type:** Server action ("use server")
-- **Purpose:** Wrapper around `ai.ts`; batch generation for cache refill
+- **Purpose:** Wrapper around `ai/index.ts`; batch generation for queue refill
 - **Functions:**
   - `generateTriviaFromContentServer(content, previousQuestions, previousAnswerIndices)` → `{ trivia, error }`; returns `RATE_LIMIT` on quota errors
   - `generateTriviaBatch(content, count, previousQuestions, previousAnswerIndices)` → `{ questions, errors }`
 - **Returns:** `{ trivia: TriviaQuestion | null, error: string | null }` (single) or `{ questions, errors }` (batch)
 
-### `lib/client/question-cache.ts` (Question Cache)
+### `lib/client/question-cache.ts` (Deprecated)
 - **Type:** Client-side module
-- **Purpose:** In-memory cache for pre-generated questions (reduce AI calls)
-- **Config:** `minSize` 5, `targetSize` 20
-- **Methods:** `pop()`, `push()`, `pushMany()`, `needsRefill()`, `isEmpty()`, `clear()`, `getAll()`
+- **Status:** Legacy cache utility; replaced by queue-based batching in `app/page.tsx`
 
 ### `components/ErrorNotification.tsx`
 - **Type:** Client component
@@ -339,19 +335,20 @@ QuiziAI/
 
 ### Test Structure
 - **Framework:** Jest + React Testing Library
-- **Coverage:** 86.23% (Statements), 72.24% (Branches)
-- **Total Tests:** 93 (all passing)
+- **Coverage:** 68.11% (Statements), 66.88% (Branches)
+- **Total Tests:** 138 (132 unit + 6 E2E)
+- **Live AI smoke tests:** `npm run test:integration:ai` (CI-only with keys)
 
 ### Test Files
-- `__tests__/app/page.test.tsx`: Category selection UI (8 tests)
-- `__tests__/app/page-gameflow.test.tsx`: Game flow logic (9 tests)
-- `__tests__/components/GameScreen.test.tsx`: UI interactions (12+ tests)
-- `__tests__/lib/server/ai.test.ts`: AI service + fallback logic (15 tests)
-- `__tests__/lib/server/game.test.ts`: Server action wrapper (7 tests)
-- `__tests__/lib/server/logger.test.ts`: Logging utility (11 tests)
-- `__tests__/lib/client/wikipedia-client.test.ts`: Data fetching (6 tests)
-- `__tests__/lib/client/fallback-data.test.ts`: Fallback sources (6 tests)
-- `__tests__/constants/topics.test.ts`: Data structure (15 tests)
+- `__tests__/app/page.test.tsx`: Category selection UI
+- `__tests__/app/page-gameflow.test.tsx`: Game flow logic
+- `__tests__/components/GameScreen.test.tsx`: UI interactions
+- `__tests__/lib/server/ai.test.ts`: AI service + fallback logic
+- `__tests__/lib/server/game.test.ts`: Server action wrapper
+- `__tests__/lib/server/logger.test.ts`: Logging utility
+- `__tests__/lib/client/wikipedia-client.test.ts`: Data fetching
+- `__tests__/lib/client/fallback-data.test.ts`: Fallback sources
+- `__tests__/constants/topics.test.ts`: Data structure
 
 ### Testing Patterns
 - **Mocking:** `jest.mock()` for external APIs
@@ -365,24 +362,11 @@ QuiziAI/
 
 ### Adding a New AI Provider
 
-1. **Add function in `lib/server/ai.ts`:**
-   ```typescript
-   async function tryNewProviderAPI(prompt: string): Promise<TriviaQuestion | null> {
-     const apiKey = process.env.NEW_PROVIDER_API_KEY;
-     if (!apiKey) return null;
-     // Implementation
-   }
-   ```
-
-2. **Add to fallback chain in `generateTriviaFromContent()`:**
-   ```typescript
-   const newProviderResult = await tryNewProviderAPI(prompt);
-   if (newProviderResult) return newProviderResult;
-   ```
-
+1. **Create provider implementation:**
+   - `lib/server/ai/providers/newprovider.ts` (implements `AIProvider`)
+2. **Add to fallback chain:** `lib/server/ai/index.ts`
 3. **Update `.env.local.example`** with new API key
-
-4. **Add tests in `__tests__/lib/server/ai.test.ts`**
+4. **Add tests** in `__tests__/lib/server/ai.test.ts`
 
 ### Adding a New Category
 
@@ -395,11 +379,11 @@ QuiziAI/
 
 ### Modifying Question Format
 
-1. **Update `TriviaQuestion` interface in `lib/types.ts` (or `lib/server/ai.ts`)**
-2. **Update `buildSystemPrompt()` in `lib/server/ai.ts`**
-3. **Update `parseTriviaResponse()` in `lib/server/ai.ts`**
-4. **Update `GameScreen.tsx` to display new fields**
-5. **Update all tests that use `TriviaQuestion`**
+1. **Update `TriviaQuestion` interface** in `lib/types.ts`
+2. **Update `buildTriviaPrompt()`** in `lib/server/ai/prompt-builder.ts`
+3. **Update provider parsing** in `lib/server/ai/providers/*`
+4. **Update `GameScreen.tsx`** to display new fields
+5. **Update tests** that use `TriviaQuestion`
 
 ### Debugging AI Generation
 
@@ -423,7 +407,7 @@ QuiziAI/
 1. **State Update Delay:** React state updates are async. Use `categoryOverride` parameter in `handleStartGame()` to bypass delay.
 
 2. **Server vs Client:** 
-   - `lib/server/ai.ts`, `lib/server/game.ts`, `lib/server/logger.ts` are server-only
+   - `lib/server/ai/index.ts`, `lib/server/game.ts`, `lib/server/logger.ts` are server-only
    - `lib/client/wikipedia-client.ts`, `lib/client/fallback-data.ts` are client-only
    - `lib/types.ts` contains shared types (re-exports from server/client modules)
    - `app/page.tsx` is client component (uses hooks)
@@ -440,9 +424,9 @@ QuiziAI/
 
 ## 📊 Key Metrics & Status
 
-- **Version:** 0.1.0
-- **Test Coverage:** 86.23% (Statements)
-- **Tests:** 93/93 passing (100%)
+- **Version:** 1.0.0-alpha
+- **Test Coverage:** 68.11% (Statements)
+- **Tests:** 138 total (132 unit + 6 E2E)
 - **Build Status:** ✅ Passing
 - **Lint Status:** ✅ No errors
 - **TypeScript:** ✅ Strict mode
@@ -471,5 +455,5 @@ QuiziAI/
 
 ---
 
-**Last Updated:** 2026-01-23 (Core Refinement Plan: dual-timer, dynamic loading, E2E tests)  
+**Last Updated:** 2026-01-24 (Core Refinement Plan: dual-timer, dynamic loading, E2E tests)  
 **Maintained By:** Solo-Dev (CEO/CTO)

@@ -1,182 +1,153 @@
-# QuiziAI Quick Reference Card
+# QuiziAI Quick Reference
 
-**For:** Developers & AI assistants needing fast context recovery.
-
----
-
-## 🎯 Core Concept
-
-Mobile-first trivia PWA that generates questions on-the-fly:
-1. User selects topic/category
-2. Fetch content from Wikipedia (client-side)
-3. Generate batch of 10 questions with AI (server-side, multi-provider fallback)
-4. Queue questions, dequeue one at a time
-5. Display question, handle answer, repeat
-6. Pre-fetch next batch when queue ≤2 questions
+**Purpose:** Fast commands and shortcuts for developers.  
+**For context recovery:** See `docs/CURSOR_CONTEXT.md`
 
 ---
 
-## 📂 File Map
-
-| File | Purpose | Type |
-|------|---------|------|
-| `app/page.tsx` | Main game orchestrator, state management, queue-based batching | Client |
-| `components/GameScreen.tsx` | Game UI (timer, buttons, feedback) | Client |
-| `components/ErrorNotification.tsx` | Popup for API failures (e.g. rate limit) | Client |
-| `lib/server/ai/index.ts` | AI orchestrator (provider fallback chain) | Server |
-| `lib/server/ai/prompt-builder.ts` | Unified prompt builder for all providers | Server |
-| `lib/server/ai/providers/` | AI provider implementations (Gemini, Groq, HF) | Server |
-| `lib/server/game.ts` | Server action (AI + batch generation) | Server |
-| `lib/server/logger.ts` | Server-side file logging (dev only, console in production) | Server |
-| `lib/client/wikipedia-client.ts` | Wikipedia fetch (client-side) | Client |
-| `lib/client/fallback-data.ts` | Backup data sources | Client |
-| `lib/client/question-cache.ts` | In-memory cache utility (legacy, replaced by queue) | Client |
-| `lib/types.ts` | Shared TypeScript types | Shared |
-| `constants/topics.ts` | Curated topics by category | Data |
-
----
-
-## 🔄 Data Flow (Simplified)
-
-```
-User Input → app/page.tsx
-  ↓
-Wikipedia Fetch (client) → lib/client/wikipedia-client.ts
-  ↓
-AI Generation (server) → lib/server/game.ts → lib/server/ai.ts
-  ↓
-Display Question → GameScreen.tsx
-  ↓
-User Answer → Next Question (repeat)
-```
-
----
-
-## 🔑 Key State Variables
-
-**In `app/page.tsx`:**
-- `selectedCategory`: Current category (persists)
-- `askedQuestions`: Array of question strings (deduplication)
-- `previousAnswerIndices`: Last correct-answer indices (for AI diversity)
-- `currentTopic`: Active topic for current question
-- `trivia`: Current question data
-- `score`: `{ correct: number, total: number }`
-- `notificationError`: Current API error for ErrorNotification
-- `questionsQueue`: State array of queued questions
-- `questionsQueueRef`: Ref for async queue access
-- `answerHistory`: Array of boolean (correct/incorrect) for progress bar
-
----
-
-## 🎨 UI Patterns
-
-- **Mobile-first:** Portrait mode, thumb-friendly buttons
-- **Dark theme:** Black background, white text
-- **Timer:** 10-second countdown, auto-advance
-- **Feedback:** Green (correct) / Red (incorrect) with fun fact
-
----
-
-## 🔌 API Keys Required
-
-**Minimum (at least one AI provider):**
-- `GEMINI_API_KEY` (primary, may hit quota)
-- `GROQ_API_KEY` (fast fallback)
-- `HUGGINGFACE_API_KEY` (rate-limited fallback)
-
-**No keys needed for:**
-- Wikipedia (all variants)
-- DuckDuckGo
-
----
-
-## 🧪 Testing
+## 🚀 Development Commands
 
 ```bash
-npm test              # Run all tests
-npm test -- --coverage # With coverage
-npm test -- --watch    # Watch mode
-```
+# Development
+npm run dev              # Local dev server (localhost:3000)
+npm run dev:network      # Network-accessible dev server
+npm run dev:tunnel       # Dev server + ngrok tunnel (mobile)
 
-**Coverage:** 86.23% (Statements), 93/93 tests passing
+# Build & Deploy
+npm run build            # Production build
+npm run start            # Production server
+npm run lint             # ESLint check
+npm run lint:fix         # Auto-fix lint issues
+
+# Testing
+npm test                 # Run all unit tests
+npm run test:watch       # Watch mode
+npm run test:coverage    # Coverage report
+npm run test:integration:ai # Live AI provider smoke tests (requires keys)
+npm run test:e2e         # Playwright E2E tests
+npm run test:e2e:ui      # E2E with UI debugger
+
+# Mock Testing
+NEXT_PUBLIC_USE_MOCKS=true npm run dev  # Use mock provider
+```
 
 ---
 
-## 🚀 Common Commands
+## ⌨️ Cursor Shortcuts
 
 ```bash
-npm run dev           # Start dev server
-npm run build         # Production build
-npm run lint          # Lint check
-npm run dev:tunnel    # Dev server + ngrok (mobile testing)
+⌘I (Ctrl+I)         # Open Agent (main tool)
+⌘L (Ctrl+L)         # Open Ask mode (read-only)
+⌘K (Ctrl+K)         # Inline edit
+⌘T (Ctrl+T)         # New Agent tab
+⌘Shift+L            # New chat (fresh context)
+Ctrl+Enter          # Reference codebase in chat
+
+@filename           # Attach file to context
+@folder/            # Attach folder
+@docs/              # Attach documentation
+@codebase           # Broad codebase search
 ```
 
 ---
 
-## 🐛 Debugging
+## 📁 Critical File Locations
 
-**Server-side logs:**
-```bash
-tail -f logs/quiziai.log
 ```
-
-**Client-side logs:**
-- Browser DevTools Console
-- Look for emoji-prefixed logs: `🎮 [GAME]`, `🤖 [AI]`, `🌐 [WIKI]`
-
----
-
-## ⚠️ Common Issues
-
-1. **State update delay:** Use `categoryOverride` parameter, not state
-2. **CORS errors:** Use client-side fetching for Wikipedia
-3. **API quota exceeded:** System auto-falls back to next provider
-4. **Timer not counting:** Check `timerStartedRef` in `GameScreen.tsx`
-
----
-
-## 📚 Documentation Files
-
-- `docs/ARCHITECTURE.md` - Full architecture guide
-- `docs/PRODUCT_LOG.md` - Development history
-- `README.md` - Setup & installation
-- `TEST_STATUS.md` - Test coverage details
-- `docs/guides/WSL2_MOBILE_ACCESS.md` - WSL2 networking
-- `docs/guides/QUICK_START_NGROK.md` - Ngrok setup
-
----
-
-## 🎯 Key Design Decisions
-
-1. **Client-side Wikipedia:** Avoids server-side blocking
-2. **Server-side AI:** Keeps API keys secure
-3. **Multi-provider fallback:** Handles quota limits
-4. **Question deduplication:** Tracks `askedQuestions[]` in state
-5. **Category persistence:** Selected category persists across questions
+lib/server/ai/index.ts          # AI orchestrator (fallback chain)
+lib/server/ai/prompt-builder.ts # Unified prompt builder
+lib/server/game.ts              # Server action (batch generation)
+lib/client/wikipedia-client.ts  # Wikipedia fetch
+app/page.tsx                    # Main game logic
+components/GameScreen.tsx       # Game UI
+constants/topics.ts             # Categories & topics
+```
 
 ---
 
 ## 🔧 Quick Fixes
 
-**Add new AI provider:**
-1. Add `tryNewProviderAPI()` in `lib/server/ai.ts`
-2. Add to fallback chain in `generateTriviaFromContent()`
-3. Update `.env.local.example`
-4. Add tests
+### Add New AI Provider
+1. Create `lib/server/ai/providers/newprovider.ts`
+2. Implement `AIProvider` interface
+3. Add to `providers` array in `lib/server/ai/index.ts`
+4. Add API key to `.env.local.example`
+5. Add tests
 
-**Add new category:**
+### Add New Category
 1. Update `Category` type in `constants/topics.ts`
-2. Add entry to `CATEGORIES` object
-3. Add 15 topics
-4. Update tests
+2. Add entry to `CATEGORIES` object (15 topics)
+3. Update tests in `__tests__/constants/topics.test.ts`
 
-**Modify question format:**
-1. Update `TriviaQuestion` interface
-2. Update `buildSystemPrompt()`
-3. Update `parseTriviaResponse()`
-4. Update `GameScreen.tsx`
-5. Update tests
+### Fix State Issues
+- Use refs for async operations
+- Use `categoryOverride` parameter (not state)
+- Clean up timers in `useEffect` return
+
+### Debug Production Build
+```bash
+npm run build           # Check for errors
+npm run start          # Test production locally
+tail -f logs/quiziai.log  # Check server logs (dev only)
+```
 
 ---
 
-**Last Updated:** 2026-01-23 (Core Refinement Plan complete) (production optimizations: queue-based batching, segmented progress bar)
+## 🐛 Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| AI quota exceeded | Auto-falls back to Groq → HuggingFace |
+| Wikipedia 403 | Already fixed (client-side fetch) |
+| Timer not counting | Check `timerStartedRef` in GameScreen |
+| Questions repeat | Verify `askedQuestions` passed to AI |
+| Build fails | Check logger `NODE_ENV` check |
+
+---
+
+## 🔍 Debugging
+
+**Server logs (dev only):**
+```bash
+tail -f logs/quiziai.log
+```
+
+**Browser console prefixes:**
+- `🎮 [GAME]` - Game flow
+- `🌍 [WIKI]` - Wikipedia operations
+- `📄 [FALLBACK]` - Fallback data sources
+- `🤖 [AI]` - AI generation
+
+**Network tab:**
+- Check API responses for errors
+- Verify Wikipedia fetch success
+- Check AI provider responses
+
+---
+
+## 📊 Test Coverage Targets
+
+| Module | Target | Current |
+|--------|--------|---------|
+| `lib/server/ai` | 95%+ | 98.36% ✅ |
+| `lib/server` | 85%+ | 88.07% ✅ |
+| `components` | 80%+ | 79.73% ✅ |
+| `lib/client` | 75%+ | 74.28% ⚠️ |
+| Overall | 80%+ | 68.11% ⚠️ |
+
+**Note:** `app/page.tsx` (48%) is covered by E2E tests.
+
+---
+
+## 🔗 Documentation
+
+- `docs/CURSOR_CONTEXT.md` - **AI context reset guide**
+- `docs/ARCHITECTURE.md` - Full technical architecture
+- `docs/PRODUCT_LOG.md` - Development history
+- `README.md` - Setup & installation
+- `docs/guides/` - Setup & troubleshooting
+
+---
+
+**Last Updated:** 2026-01-24  
+**Version:** 1.0.0-alpha

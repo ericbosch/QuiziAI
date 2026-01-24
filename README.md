@@ -213,7 +213,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 - Mobile-first design (portrait mode focus)
 - Wikipedia integration (Spanish Wikipedia API)
-- AI-powered trivia generation using Gemini 1.5 Flash
+- AI-powered trivia generation using Gemini (with Groq + Hugging Face fallback)
 - Dark-themed UI with thumb-friendly buttons
 - Real-time feedback with fun facts
 
@@ -222,7 +222,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - Next.js 14 (App Router)
 - TypeScript
 - Tailwind CSS
-- Google Generative AI (Gemini 1.5 Flash)
+- Google Generative AI (Gemini 2.5/3) + Groq + Hugging Face
 
 ## Testing
 
@@ -239,6 +239,11 @@ npm run test:watch
 Coverage report:
 ```bash
 npm run test:coverage
+```
+
+Live AI provider smoke tests (requires API keys):
+```bash
+npm run test:integration:ai
 ```
 
 ## Logging
@@ -274,6 +279,6 @@ This project is private and proprietary.
 
 ## Version
 
-Current version: **0.1.0** (Initial Release)
+Current version: **1.0.0-alpha**
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history.

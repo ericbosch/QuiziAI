@@ -1,6 +1,6 @@
 {
   "name": "quiziai",
-  "version": "0.1.0",
+  "version": "1.0.0-alpha",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,6 +12,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:integration:ai": "RUN_LIVE_AI_TESTS=true jest __tests__/integration/ai-live.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
