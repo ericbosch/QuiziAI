@@ -127,7 +127,7 @@ QuiziAI/
 
 **AI Providers (automatic failover):**
 ```
-Gemini (2.5/3 Flash/Pro) → Groq (Llama 3.1 8B) → HuggingFace (Mistral-7B)
+Gemini (2.5/3 Flash/Pro) → Groq (Llama 3.1 8B) → HuggingFace (SmolLM3-3B)
 ```
 
 **Data Sources (automatic failover):**

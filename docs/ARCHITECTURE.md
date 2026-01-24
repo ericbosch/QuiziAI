@@ -208,7 +208,7 @@ QuiziAI/
   1. Gemini REST API v1 (direct fetch)
   2. Gemini SDK (fallback if REST fails)
   3. Groq API (Llama 3.1 8B)
-  4. Hugging Face API (Mistral-7B)
+  4. Hugging Face API (SmolLM3-3B)
 - **Related Files:**
   - `lib/server/ai/prompt-builder.ts`: Unified prompt builder
   - `lib/server/ai/providers/*`: Provider implementations and JSON parsing
@@ -282,7 +282,7 @@ QuiziAI/
 - **Quota:** Free tier, very fast (~560 tokens/sec)
 
 **Hugging Face (Fallback 2)**
-- **Model:** `mistralai/Mistral-7B-Instruct-v0.2`
+- **Model:** `HuggingFaceTB/SmolLM3-3B`
 - **API:** Inference API
 - **Env Var:** `HUGGINGFACE_API_KEY`
 - **Optional Override:** `HUGGINGFACE_MODEL` (must be supported by hf-inference)

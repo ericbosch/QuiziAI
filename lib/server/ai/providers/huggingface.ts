@@ -18,7 +18,7 @@ export class HuggingFaceProvider implements AIProvider {
   constructor() {
     this.apiKey = process.env.HUGGINGFACE_API_KEY || null;
     this.model =
-      process.env.HUGGINGFACE_MODEL?.trim() || "mistralai/Mistral-7B-Instruct-v0.2";
+      process.env.HUGGINGFACE_MODEL?.trim() || "HuggingFaceTB/SmolLM3-3B";
   }
 
   isAvailable(): boolean {

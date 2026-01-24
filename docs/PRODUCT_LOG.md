@@ -20,7 +20,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - **LLM (AI):** Multi-provider fallback system (automatic failover):
   - Primary: **Gemini 2.5/3 Flash/Pro** (Free Tier: 15 RPM, 1M TPM) - may hit quota limits
   - Fallback 1: **Groq Cloud** (Llama 3.1 8B) - Free tier, very fast (~560 tokens/sec)
-  - Fallback 2: **Hugging Face Inference API** (Mistral-7B) - Free tier, ~300 req/hour
+  - Fallback 2: **Hugging Face Inference API** (SmolLM3-3B) - Free tier, ~300 req/hour
 - **Data Providers:**
   - General Knowledge: **Wikipedia API** (Free/Unlimited).
   - Cinema/TV: **TMDB API** (Free with attribution).
@@ -181,7 +181,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ AI integration with multi-provider fallback (`lib/server/ai.ts`):
   - Gemini (2.5-flash, 3-flash-preview, 2.5-pro, 3-pro-preview) - primary
   - Groq (Llama 3.1 8B) - free fallback, very fast
-  - Hugging Face (Mistral-7B) - free fallback, rate-limited
+  - Hugging Face (SmolLM3-3B) - free fallback, rate-limited
   - Automatic failover on quota exceeded or errors
 - ✅ JSON output with: 1 question, 4 options, correct answer index, fun fact
 - ✅ Dark-themed UI (black background, dark colors)
@@ -299,7 +299,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 5. AI Providers (automatic fallback on quota/error):
    - Primary: Gemini 2.5/3 Flash/Pro - Server-side (API key protected)
    - Fallback 1: Groq (Llama 3.1 8B) - Server-side, free tier
-   - Fallback 2: Hugging Face (Mistral-7B) - Server-side, free tier
+   - Fallback 2: Hugging Face (SmolLM3-3B) - Server-side, free tier
 
 **Debugging:**
 - Browser console (F12): Shows client-side operations (Wikipedia fetch, fallbacks, game flow)
@@ -450,7 +450,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - **Providers (in order):**
   1. **Gemini** (2.5/3 Flash/Pro) - Primary, may hit quota
   2. **Groq** (Llama 3.1 8B) - Free tier, very fast (~560 tokens/sec)
-  3. **Hugging Face** (Mistral-7B) - Free tier, rate-limited (~300 req/hour)
+  3. **Hugging Face** (SmolLM3-3B) - Free tier, rate-limited (~300 req/hour)
 - **Features:**
   - Automatic detection of quota exceeded errors (429 status)
   - Seamless fallback to next provider
