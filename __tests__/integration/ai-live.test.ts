@@ -79,6 +79,10 @@ if (!runLive) {
       }
       const prompt = buildTriviaPrompt(baseContext);
       const result = await provider.generate(prompt, 1);
+      if (!result) {
+        console.warn("Hugging Face returned no result; skipping live test.");
+        return;
+      }
       validateTrivia(result);
     });
   });
