@@ -217,6 +217,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Features
 
 - Mobile-first design (portrait mode focus)
+- Spanish UI (docs/logs in English)
 - Wikipedia integration (Spanish Wikipedia API)
 - AI-powered trivia generation using Gemini (with Groq + Hugging Face fallback)
 - Dark-themed UI with thumb-friendly buttons
@@ -279,6 +280,7 @@ This project is private and proprietary.
 
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Complete architecture guide, data flow, and patterns
 - **[QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md)** - Quick reference card for developers
+- **[CURSOR_SETUP.md](./docs/CURSOR_SETUP.md)** - Cursor AI setup + prompt template
 - **[PRODUCT_LOG.md](./docs/PRODUCT_LOG.md)** - Development history and decisions
 - **[TEST_STATUS.md](./TEST_STATUS.md)** - Test coverage and results
 

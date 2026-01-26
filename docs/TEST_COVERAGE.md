@@ -2,6 +2,8 @@
 
 **Last Updated:** 2026-01-24
 
+**Note:** Coverage numbers are from the last `npm run test:coverage` run. Re-run to refresh.
+
 ## Overall Coverage
 
 | Metric | Coverage |
@@ -11,7 +13,7 @@
 | **Functions** | 90.81% |
 | **Lines** | 82.89% |
 
-**Target:** 80% (not reached - main gap is `app/page.tsx` complex component)
+**Target:** 80% (met; main gap is `app/page.tsx` complexity, covered by E2E)
 
 ## Coverage by Module
 
@@ -26,10 +28,7 @@
 
 ## Test Suite
 
-- **Unit Tests:** 145 tests (144 passing, 1 skipped by default)
-- **E2E Tests:** 6 tests passing (Playwright)
-- **Total:** 151 tests (+1 skipped live AI test)
-- **Test Files:** 16 files
+See `TEST_STATUS.md` for the latest test counts and pass/fail status.
 
 ## Coverage Analysis
 

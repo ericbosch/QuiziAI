@@ -1,7 +1,7 @@
 # QuiziAI - Cursor Context Recovery Guide
 
 **Purpose:** Instant context recovery for AI assistants (Claude, GPT, etc.) working on QuiziAI.  
-**Last Updated:** 2026-01-24  
+**Last Updated:** 2026-01-26  
 **Version:** 1.0.0-alpha
 
 ---
@@ -15,12 +15,12 @@
 - **Mobile-first:** Portrait mode, thumb-friendly, dark theme
 - **Resilient:** Multi-provider fallback chains (AI + data sources)
 - **Type-safe:** Strict TypeScript, no `any` types
-- **Well-tested:** 82.76% coverage (145 unit + 6 E2E tests; 1 live AI test skipped by default)
+- **Well-tested:** See `TEST_STATUS.md` and `docs/TEST_COVERAGE.md` for current numbers
 
 **Status:**
 - Version: 1.0.0-alpha
 - Build: ✅ Passing
-- Tests: ✅ 145 unit + 6 E2E (1 live AI test skipped by default)
+- Tests: ✅ See `TEST_STATUS.md`
 - Deployment: Production-ready (Vercel)
 
 ---
@@ -64,7 +64,7 @@ QuiziAI/
 ├── constants/
 │   └── topics.ts               # 8 categories, 120 topics
 │
-├── __tests__/                  # 145 unit tests
+├── __tests__/                  # Jest unit tests (see TEST_STATUS.md)
 ├── e2e/                        # 6 Playwright tests
 ├── scripts/                    # Dev/build scripts
 └── docs/                       # Documentation
@@ -179,6 +179,10 @@ const [answerHistory, setAnswerHistory] = useState([])
 - **Colors:** Black `#000000` background, white text
 - **Theme:** Dark-only (no light mode)
 
+### Language Policy
+- **Game UI:** Spanish (user-facing text)
+- **Development:** English for docs, logs, commit messages, and code comments
+
 ### GameScreen Components
 - **Dual-timer system:**
   - Timer A: 15s decision (answer or timeout)
@@ -231,12 +235,8 @@ HUGGINGFACE_MODEL=...       # Optional HF model override (hf-inference text-gene
 ## 🧪 TESTING STRATEGY
 
 ### Test Coverage
-- **Total:** 151 tests (145 unit + 6 E2E; 1 live AI test skipped by default)
-- **Coverage:** 82.76% overall
-  - `lib/server/ai`: 98.36% ✅
-  - `lib/server`: 88.07% ✅
-  - `components`: 79.08% ✅
-  - `app/page.tsx`: 84.25% (covered by E2E)
+- **Latest Results:** See `TEST_STATUS.md`
+- **Coverage Breakdown:** See `docs/TEST_COVERAGE.md`
 
 ### Test Commands
 ```bash
@@ -437,6 +437,7 @@ tail -f logs/quiziai.log  # Development only
 - `docs/ARCHITECTURE.md` - Full technical architecture
 - `docs/PRODUCT_LOG.md` - Development history & decisions
 - `docs/QUICK_REFERENCE.md` - Developer quick reference
+- `docs/CURSOR_SETUP.md` - Cursor AI setup + prompt template
 - `docs/TEST_COVERAGE.md` - Test coverage details
 - `README.md` - Setup & installation
 - `docs/guides/` - Setup & troubleshooting guides
@@ -448,11 +449,12 @@ tail -f logs/quiziai.log  # Development only
 **When starting a new task:**
 
 1. **Read this file first** for context recovery
-2. **Check relevant files** mentioned in task
-3. **Understand current patterns** before suggesting changes
-4. **Follow existing conventions** (structure, naming, styling)
-5. **Don't refactor** unless explicitly requested
-6. **Test changes** before considering done
+2. **Read `docs/CURSOR_SETUP.md`** for Cursor setup and prompt template
+3. **Check relevant files** mentioned in task
+4. **Understand current patterns** before suggesting changes
+5. **Follow existing conventions** (structure, naming, styling)
+6. **Don't refactor** unless explicitly requested
+7. **Test changes** before considering done
 
 **Key principles:**
 - ✅ Preserve existing functionality
@@ -466,6 +468,6 @@ tail -f logs/quiziai.log  # Development only
 
 ---
 
-**Last Updated:** 2026-01-24  
+**Last Updated:** 2026-01-26  
 **Maintained By:** Eric Bosch (Solo Developer)  
 **Project Status:** Production-ready (v1.0.0-alpha)

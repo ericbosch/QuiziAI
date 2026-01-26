@@ -168,6 +168,10 @@ When suggesting changes:
 - Dark theme: `bg-black`, `bg-gray-900`, `text-white`
 - Thumb-friendly: min 44x44px touch targets
 
+### Language Policy:
+- User-facing UI: Spanish only
+- Docs, logs, commit messages, code comments: English
+
 ## MEMORY BANK PROTOCOL
 
 BEFORE starting ANY task:

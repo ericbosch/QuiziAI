@@ -13,7 +13,7 @@
 - **Mobile-first:** Optimized for portrait mode, thumb-friendly UI
 - **Resilient:** Multi-provider fallback system for AI and data sources
 - **Type-safe:** Strict TypeScript throughout
-- **Well-tested:** 82.76% coverage (145 unit + 6 E2E tests; 1 live AI test skipped by default)
+- **Well-tested:** See `TEST_STATUS.md` and `docs/TEST_COVERAGE.md` for current numbers
 
 ---
 
@@ -53,7 +53,7 @@ QuiziAI/
 ├── constants/
 │   └── topics.ts               # Curated topics by category (8 categories, 120 topics)
 │
-├── __tests__/                  # Test suite (151 tests, 82.76% coverage)
+├── __tests__/                  # Test suite (see TEST_STATUS.md)
 │   ├── app/                    # Page component tests
 │   ├── components/             # Component tests
 │   ├── lib/                    # Service unit tests
@@ -142,17 +142,13 @@ QuiziAI/
      - Provider implementations (Gemini, Groq, Hugging Face) handle API-specific details
      - Easy to add new providers by implementing `AIProvider` interface
 
-4. **Question deduplication**
+5. **Question deduplication**
    - **Why:** Avoid repetitive questions in same session
    - **How:** Track `askedQuestions[]` in state, pass to AI prompt
 
-5. **Category-based gameplay**
+6. **Category-based gameplay**
    - **Why:** Better UX than manual input
    - **How:** Selected category persists, random topic per question
-
-6. **Queue-based batch loading**
-   - **Why:** Reduce AI API calls, avoid quota limits; faster UX with pre-fetching
-   - **How:** `questionsQueue` state array. Dequeue first; `generateTriviaBatch(10)` when empty; pre-fetch when ≤2 remain
 
 7. **Error notifications**
    - **Why:** Clear UX when API fails (e.g. rate limit).
@@ -303,10 +299,6 @@ QuiziAI/
 
 **Note:** Wikipedia-only source of truth (no non-Wikipedia fallbacks).
 
-**English Wikipedia (Fallback)**
-- **API:** MediaWiki API (`en.wikipedia.org/w/api.php`)
-- **No API key required**
-
 ---
 
 ## 🎨 UI Patterns & Conventions
@@ -323,6 +315,10 @@ QuiziAI/
 - **Typography:** System fonts, responsive sizes
 - **Spacing:** Mobile-optimized padding/margins
 
+### Language
+- **User-facing UI:** Spanish only
+- **Docs/logs/commit messages:** English
+
 ### Component Patterns
 - **Client components:** Use `"use client"` directive
 - **Server actions:** Use `"use server"` directive
@@ -335,8 +331,8 @@ QuiziAI/
 
 ### Test Structure
 - **Framework:** Jest + React Testing Library
-- **Coverage:** 82.76% (Statements), 74.40% (Branches)
-- **Total Tests:** 151 (145 unit + 6 E2E; 1 live AI test skipped by default)
+- **Coverage:** See `docs/TEST_COVERAGE.md`
+- **Total Tests:** See `TEST_STATUS.md`
 - **Live AI smoke tests:** `npm run test:integration:ai` (CI-only with keys)
 
 ### Test Files
@@ -409,7 +405,7 @@ QuiziAI/
 2. **Server vs Client:** 
    - `lib/server/ai/index.ts`, `lib/server/game.ts`, `lib/server/logger.ts` are server-only
    - `lib/client/wikipedia-client.ts`, `lib/client/fallback-data.ts` are client-only
-   - `lib/types.ts` contains shared types (re-exports from server/client modules)
+   - `lib/types.ts` contains shared types for client + server
    - `app/page.tsx` is client component (uses hooks)
 
 3. **API Key Security:** Never expose API keys in client code. All AI calls must go through server actions.
@@ -425,8 +421,8 @@ QuiziAI/
 ## 📊 Key Metrics & Status
 
 - **Version:** 1.0.0-alpha
-- **Test Coverage:** 82.76% (Statements)
-- **Tests:** 151 total (145 unit + 6 E2E; 1 live AI test skipped by default)
+- **Test Coverage:** See `docs/TEST_COVERAGE.md`
+- **Tests:** See `TEST_STATUS.md`
 - **Build Status:** ✅ Passing
 - **Lint Status:** ✅ No errors
 - **TypeScript:** ✅ Strict mode

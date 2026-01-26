@@ -3,9 +3,9 @@
 **Project Status:** 🚀 Version 1.0.0-alpha - First Stable Release  
 **Deployment Date:** 2026-01-22  
 **Deployment URL:** https://quizi-ai.vercel.app/ (when deployed)  
-**Last Update:** 2026-01-24 - Core Refinement Plan complete: dual-timer system, dynamic loading messages, E2E tests, test coverage improvements (82.76%)  
+**Last Update:** 2026-01-26 - Documentation consolidation and Cursor setup guidance added  
 **Next Steps:** Phase 2 (Gemini-prioritized): 2.1 Haptic Feedback → 2.2 Persistence → 2.3 PWA Icons & Splash  
-**Concept:** AI-powered Trivia PWA using real-time scraping from specialized sources.  
+**Concept:** AI-powered Trivia PWA using Wikipedia as the primary source of truth.  
 **Investment:** 0€ (Bootstrapped)  
 **Approach:** Mobile-First (PWA)
 
@@ -16,7 +16,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 
 ## 🛠️ Tech Stack & Pricing (0€ Cost Strategy)
 - **Framework:** Next.js (App Router) + Tailwind CSS.
-- **PWA:** `next-pwa` for mobile home-screen installation.
+- **PWA:** Web App Manifest (`public/manifest.json`) for home-screen installation.
 - **LLM (AI):** Multi-provider fallback system (automatic failover):
   - Primary: **Gemini 2.5/3 Flash/Pro** (Free Tier: 15 RPM, 1M TPM) - may hit quota limits
   - Fallback 1: **Groq Cloud** (Llama 3.1 8B) - Free tier, very fast (~560 tokens/sec)
@@ -25,7 +25,15 @@ An infinite, personalized trivia experience where content is generated on the fl
   - General Knowledge: **Wikipedia API** (Free/Unlimited).
   - Cinema/TV: **TMDB API** (Free with attribution).
 - **Hosting:** **Vercel** (Hobby Tier: 0€).
-- **Sincronization:** Google Drive (Desktop sync) for cross-platform log management.
+- **Synchronization:** Google Drive (Desktop sync) for cross-platform log management.
+
+---
+
+## 📌 Current References (2026-01-26)
+- Legacy `lib/server/ai.ts` references map to `lib/server/ai/index.ts`.
+- Gemini 1.5 references are historical; current primary models are Gemini 2.5/3.
+- PWA uses a Web App Manifest (no `next-pwa` dependency).
+- Tests/coverage numbers are tracked in `TEST_STATUS.md` and `docs/TEST_COVERAGE.md`.
 
 ---
 
@@ -34,7 +42,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 ### Phase 1: MVP & Core Logic ✅ COMPLETE
 - [x] Initialize Next.js project with mobile-first Tailwind configuration.
 - [x] Implement `WikipediaService`: Fetch summaries based on user input.
-- [x] Implement `AIService`: Prompt engineering for Gemini 1.5 Flash to generate JSON trivia (4 options, 1 correct).
+- [x] Implement `AIService`: Prompt engineering for Gemini 2.5/3 to generate JSON trivia (4 options, 1 correct).
 - [x] UI: "Thumb-friendly" question screen with progress bar.
 
 **Implementation Details:**
@@ -51,7 +59,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - `lib/client/fallback-data.ts`: Wikipedia-only fallback data source
   - English Wikipedia (MediaWiki API)
   - Comprehensive error logging
-- `lib/server/ai.ts`: Gemini integration with strict JSON output enforcement
+- `lib/server/ai/index.ts`: Gemini integration with strict JSON output enforcement
   - **Dynamic prompt builder** - Includes previous questions and `previousAnswerIndices` to avoid duplicates and vary correct-answer position
   - Supports multiple Gemini models (2.5-flash, 3-flash-preview, 2.5-pro, 3-pro-preview)
   - REST API v1 direct calls (primary method)
@@ -140,11 +148,11 @@ An infinite, personalized trivia experience where content is generated on the fl
   - [x] Grouped documentation guides into `docs/guides/`
   - [x] Updated all imports and test paths
 - [x] **Safety Layer:** Server-only boundaries verified ✅
-  - `"use server"` directives in place for `lib/server/game.ts` and `lib/server/ai.ts`
+  - `"use server"` directives in place for `lib/server/game.ts` and `lib/server/ai/index.ts`
   - Logger only imported by server-side files
   - No server code accidentally imported in client components
 - [x] **CI/CD Prep:** Build and tests verified ✅
-  - All 93 tests passing (100% success)
+  - Tests passing (see `TEST_STATUS.md`)
   - Production build successful
   - All imports resolve correctly
   - No TypeScript errors
@@ -177,7 +185,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 **Phase 1 Requirements:**
 - ✅ Mobile-first layout with portrait mode focus (viewport configured, responsive design)
 - ✅ Wikipedia service for Spanish Wikipedia API (`lib/client/wikipedia-client.ts` - client-side fetch)
-- ✅ AI integration with multi-provider fallback (`lib/server/ai.ts`):
+- ✅ AI integration with multi-provider fallback (`lib/server/ai/index.ts`):
   - Gemini (2.5-flash, 3-flash-preview, 2.5-pro, 3-pro-preview) - primary
   - Groq (Llama 3.1 8B) - free fallback, very fast
   - Hugging Face (SmolLM3-3B) - free fallback, rate-limited
@@ -199,7 +207,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ Modular architecture (separated services, components)
 - ✅ Strict TypeScript typing
 - ✅ Clean code structure
-- ✅ Comprehensive test coverage (86.23% statements, 93/93 tests passing)
+- ✅ Comprehensive test coverage (see `docs/TEST_COVERAGE.md`) and passing tests (see `TEST_STATUS.md`)
 - ✅ Error handling throughout
 - ✅ No linter errors
 - ✅ Production build successful
@@ -208,20 +216,11 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ Queue-based batch loading (10 questions per batch, pre-fetch at ≤2); ErrorNotification for rate limits
 
 **Testing Coverage:**
-- ✅ Unit tests for Wikipedia client service (`__tests__/lib/client/wikipedia-client.test.ts`) - 6 test cases
-- ✅ Unit tests for AI service (`__tests__/lib/server/ai.test.ts`) - 15 test cases
-- ✅ Unit tests for Game service (`__tests__/lib/server/game.test.ts`) - 7 test cases (updated for new API)
-- ✅ Component tests for GameScreen (`__tests__/components/GameScreen.test.tsx`) - 12+ test cases (updated for timer and next question features)
-- ✅ Unit tests for Topics constants (`__tests__/constants/topics.test.ts`) - 15 test cases (category selection, randomness, structure validation)
-- ✅ Component tests for Home page (`__tests__/app/page.test.tsx`) - 8 test cases (Category selection UI and interaction tests)
-- ✅ Component tests for Home page game flow (`__tests__/app/page-gameflow.test.tsx`) - 9 test cases (Game flow, error handling, question tracking)
-- ✅ Unit tests for Logger service (`__tests__/lib/server/logger.test.ts`) - 11 test cases
-- ✅ Unit tests for Fallback data service (`__tests__/lib/client/fallback-data.test.ts`) - 6 test cases
-- Test framework: Jest + React Testing Library with jsdom environment
-- Total: 93 test cases covering all core functionality and edge cases
-- Coverage: 86.23% (Statements), 72.24% (Branches), 87.5% (Functions), 87.05% (Lines)
+- Test framework: Jest + React Testing Library (jsdom)
+- Unit tests cover Wikipedia client, AI services, game flow, and UI components
+- Current test results: see `TEST_STATUS.md`
+- Coverage breakdown: see `docs/TEST_COVERAGE.md`
 - Test scripts: `npm test`, `npm run test:watch`, `npm run test:coverage`
-- **Status:** All tests passing (100%), coverage above 80% target
 
 **Verification Status:**
 - ✅ All Phase 1 requirements implemented and verified
@@ -230,7 +229,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - Spanish Wikipedia MediaWiki API (primary)
   - Spanish Wikipedia REST API (fallback)
   - English Wikipedia MediaWiki API (fallback)
-- ✅ Gemini 1.5 Flash integration with JSON output (`lib/server/ai.ts` - enforces JSON structure)
+- ✅ Gemini 2.5/3 integration with JSON output (`lib/server/ai/index.ts` - enforces JSON structure)
 - ✅ Dark-themed UI with thumb-friendly buttons (`components/GameScreen.tsx` - black bg, large buttons in bottom half)
 - ✅ 1-second feedback delay implemented (`setTimeout(() => {...}, 1000)` in GameScreen)
 - ✅ Progress bar displayed on game screen (visual progress indicator)
@@ -314,14 +313,14 @@ An infinite, personalized trivia experience where content is generated on the fl
 ### Codebase Restructure ✅ COMPLETE (2026-01-22)
 - **Feature:** Restructured codebase following Next.js 14+ App Router best practices
 - **Implementation:**
-  - Created `lib/server/` directory for server-only code (ai.ts, game.ts, logger.ts)
+  - Created `lib/server/` directory for server-only code (ai/index.ts, game.ts, logger.ts)
   - Created `lib/client/` directory for client-only code (wikipedia-client.ts, fallback-data.ts)
   - Created `lib/types.ts` for shared TypeScript types
   - Organized scripts into `scripts/` directory
   - Grouped documentation guides into `docs/guides/` directory
   - Updated all imports in source files and test files
   - Updated all documentation to reflect new structure
-- **Status:** ✅ Complete - All tests passing (93/93), build successful
+- **Status:** ✅ Complete - Tests passing (see `TEST_STATUS.md`), build successful
 - **Benefits:** Clear server/client separation, better organization, enhanced security
 - **Documentation:** All docs updated (ARCHITECTURE.md, QUICK_REFERENCE.md, PRODUCT_LOG.md, README.md, guide files)
 
@@ -401,13 +400,8 @@ An infinite, personalized trivia experience where content is generated on the fl
     - All E2E tests passing with mock provider
 - **Test Coverage Improvements:**
   - Added tests for: Mock Provider, ErrorNotification, Game batch logic, AI providers (Groq, Hugging Face), AI index orchestrator, Root layout
-  - **Coverage:** 82.76% (up from 59.1%)
-    - `lib/server`: 88.07% ✅
-    - `lib/server/ai`: 98.36% ✅
-    - `lib/client`: 91.22% ✅
-    - `components`: 79.08% ✅
-    - `app/page.tsx`: 84.25% (complex component, covered by E2E tests)
-  - **Total Tests:** 145 unit tests + 6 E2E tests = 151 tests passing (1 live AI test skipped by default)
+  - **Coverage:** See `docs/TEST_COVERAGE.md`
+  - **Total Tests:** See `TEST_STATUS.md`
 - **Status:** ✅ Complete. All phases implemented, all tests passing, production-ready.
 
 ### Git/SSH Authentication Setup ✅ NEW
@@ -428,7 +422,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - **Server-side only:** File logging works on server (AI operations, API calls)
 - **Client-side:** Browser console logs remain for client-side operations
 - **Integration:**
-  - Updated `lib/server/ai.ts` - All AI provider calls logged to file
+  - Updated `lib/server/ai/index.ts` - All AI provider calls logged to file
   - Updated `lib/server/game.ts` - All game flow operations logged to file
   - Module-specific loggers: `createLogger("MODULE_NAME")`
 - **Features:**
@@ -452,7 +446,7 @@ An infinite, personalized trivia experience where content is generated on the fl
   - All providers support JSON structured output
   - Comprehensive logging for debugging
 - **Implementation:**
-  - `lib/server/ai.ts`: Added `tryGroqAPI()` and `tryHuggingFaceAPI()` functions
+  - `lib/server/ai/index.ts`: Added `tryGroqAPI()` and `tryHuggingFaceAPI()` functions
   - Updated `generateTriviaFromContent()` with fallback chain
   - Environment variables: `GROQ_API_KEY`, `HUGGINGFACE_API_KEY`
   - Updated `.env.local.example` with all provider keys
@@ -480,7 +474,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 **Implementation:**
 - `GameScreen.tsx`: Timer logic with `useCallback`, `useRef`, and proper cleanup
 - `app/page.tsx`: Question tracking state (`askedQuestions`) and next question handler
-- `lib/server/ai.ts`: `buildSystemPrompt()` function that includes previous questions context
+- `lib/server/ai/index.ts`: `buildSystemPrompt()` function that includes previous questions context
 - `lib/server/game.ts`: Updated to accept and pass `previousQuestions` parameter
 
 **Build Status:** ✅ Production build successful
@@ -598,8 +592,8 @@ An infinite, personalized trivia experience where content is generated on the fl
 
 ### Build & Test Status
 - ✅ Production build successful (no warnings)
-- ✅ 93/93 tests passing (100% pass rate)
-- ✅ Test coverage: 86.23% (Statements), 72.24% (Branches)
+- ✅ Tests passing (see `TEST_STATUS.md`)
+- ✅ Test coverage tracked (see `docs/TEST_COVERAGE.md`)
 - ✅ No linter errors
 - ✅ TypeScript strict mode compliant
 - ✅ PWA manifest.json configured

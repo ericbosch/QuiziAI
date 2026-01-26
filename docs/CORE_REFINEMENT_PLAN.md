@@ -42,9 +42,9 @@
 
 ## ✅ Acceptance Criteria
 - [x] `npm run build` succeeds.
-- [x] 145 unit tests + 6 E2E tests pass (1 live AI test skipped by default; E2E tests require `npx playwright install chromium`).
+- [x] Unit tests pass; E2E tests run separately (see `TEST_STATUS.md`).
 - [x] UI/Content is exclusively in Spanish; Documentation/Logs in English.
-- [x] Test coverage: 82.76% (target: 80% - main gap is `app/page.tsx` complex component)
+- [x] Test coverage meets target (see `docs/TEST_COVERAGE.md`).
 
 ## 📝 Implementation Notes
 - **Playwright Setup**: Run `npx playwright install chromium` before running E2E tests.
