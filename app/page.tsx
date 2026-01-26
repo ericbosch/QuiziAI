@@ -755,7 +755,7 @@ export default function Home() {
         </div>
 
         <div className="mt-8 text-center text-xs text-gray-600">
-          <p>Powered by Wikipedia</p>
+          <p>Impulsado por Wikipedia</p>
         </div>
       </div>
     </div>

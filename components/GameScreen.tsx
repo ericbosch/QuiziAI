@@ -376,7 +376,7 @@ export default function GameScreen({
       {/* Footer with attribution */}
       <div className="px-4 pb-4 pt-2">
         <div className="text-center text-xs text-gray-600">
-          <p>Powered by Wikipedia</p>
+          <p>Impulsado por Wikipedia</p>
           {currentTopic && (
             <p className="text-gray-700 mt-1">Tema: {currentTopic}</p>
           )}

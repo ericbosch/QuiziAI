@@ -159,7 +159,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 ---
 
 ## ⚖️ Legal & Compliance
-1. **Attribution:** ✅ Footer displays "Powered by Wikipedia" on all screens. "Powered by TMDB" pending Phase 2.
+1. **Attribution:** ✅ Footer displays "Impulsado por Wikipedia" on all screens. "Powered by TMDB" pending Phase 2.
 2. **IP Policy:** ✅ Text-only questions in MVP. No copyrighted images/posters.
 3. **Privacy:** ✅ No login required. Anonymous gameplay to meet GDPR.
 
@@ -235,7 +235,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - ✅ 1-second feedback delay implemented (`setTimeout(() => {...}, 1000)` in GameScreen)
 - ✅ Progress bar displayed on game screen (visual progress indicator)
 - ✅ Infinite trivia generation from same topic (topic persistence in `app/page.tsx`)
-- ✅ Attribution displayed on all screens (`app/page.tsx` and `components/GameScreen.tsx` - "Powered by Wikipedia")
+- ✅ Attribution displayed on all screens (`app/page.tsx` and `components/GameScreen.tsx` - "Impulsado por Wikipedia")
 - ✅ All test files created and structured correctly (4 test files, 33+ test cases)
 - ✅ No linter errors (verified with ESLint)
 - ✅ TypeScript strict mode enabled (all types properly defined)
