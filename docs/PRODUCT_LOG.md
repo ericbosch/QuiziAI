@@ -386,7 +386,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 - **Implementation:**
   - **Phase 1: Infrastructure & Mocks**
     - Production logger verified (already had production checks)
-    - Spanish Mock Provider: 10 questions in `lib/client/mock-provider.ts`
+    - Spanish Mock Provider: 10 questions in `lib/shared/mock-provider.ts`
     - Mock integration: `NEXT_PUBLIC_USE_MOCKS=true` toggle in AI service
   - **Phase 2: Game Logic**
     - Batching system: 10-question queue with pre-fetch at question 8 (when queue has 2 left)

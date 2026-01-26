@@ -1,6 +1,6 @@
 # QuiziAI 🧠
 
-AI-powered trivia experience using Wikipedia and Gemini 1.5 Flash.
+AI-powered trivia experience using Wikipedia and Gemini 2.5/3 (with Groq + Hugging Face fallback).
 
 > 📖 **Quick Context Recovery:** See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for architecture, data flow, and key patterns.
 

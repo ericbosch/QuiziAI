@@ -46,6 +46,8 @@ QuiziAI/
 │   ├── client/                  # Client-only code
 │   │   ├── wikipedia-client.ts # Client-side Wikipedia fetch (primary)
 │   │   ├── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
+│   ├── shared/                  # Shared (client + server safe)
+│   │   └── mock-provider.ts    # Spanish mock questions (testing)
 │   └── types.ts                # Shared TypeScript types
 │
 ├── constants/

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import GameScreen from "@/components/GameScreen";
 import ErrorNotification from "@/components/ErrorNotification";
 import { generateTriviaFromContentServer, generateTriviaBatch } from "@/lib/server/game";
@@ -14,6 +14,17 @@ import {
   getCategoryById,
   type Category,
 } from "@/constants/topics";
+
+const BATCH_SIZE = 10; // Batch size for question loading
+const PRE_FETCH_THRESHOLD = 2; // Pre-fetch when queue has 2 questions left
+
+// Spanish loading messages
+const LOADING_MESSAGES = [
+  "Consultando la Biblioteca de Alejandría...",
+  "Interrogando a la IA sobre {category}...",
+  "Limpiando el polvo de los libros...",
+  "Sincronizando neuronas artificiales...",
+];
 
 export default function Home() {
   const [topic, setTopic] = useState("");
@@ -36,24 +47,13 @@ export default function Home() {
   const currentContentRef = useRef<string>(""); // Store current content for batch fetching
   const isFetchingBatchRef = useRef<boolean>(false); // Prevent multiple batch fetches
   const loadingMessageIntervalRef = useRef<NodeJS.Timeout | null>(null); // Interval for rotating messages
-  const BATCH_SIZE = 10; // Batch size for question loading
-  const PRE_FETCH_THRESHOLD = 2; // Pre-fetch when queue has 2 questions left (at question index 8)
-
-  // Spanish loading messages
-  const LOADING_MESSAGES = [
-    "Consultando la Biblioteca de Alejandría...",
-    "Interrogando a la IA sobre {category}...",
-    "Limpiando el polvo de los libros...",
-    "Sincronizando neuronas artificiales...",
-  ];
-
   // Sync ref with state
   useEffect(() => {
     questionsQueueRef.current = questionsQueue;
   }, [questionsQueue]);
 
   // Pre-fetch batch when queue is low
-  const preFetchBatch = async (content: string) => {
+  const preFetchBatch = useCallback(async (content: string) => {
     if (isFetchingBatchRef.current) return;
     isFetchingBatchRef.current = true;
 
@@ -84,10 +84,10 @@ export default function Home() {
     } finally {
       isFetchingBatchRef.current = false;
     }
-  };
+  }, [BATCH_SIZE]);
 
 
-  const handleStartGame = async (topicToUse?: string, categoryOverride?: Category | null) => {
+  const handleStartGame = useCallback(async (topicToUse?: string, categoryOverride?: Category | null) => {
     console.log("🎮 [GAME] handleStartGame called", { topicToUse, categoryOverride, selectedCategory });
     let topicForGame: string;
 
@@ -353,9 +353,9 @@ export default function Home() {
       }
       setLoadingMessage("");
     }
-  };
+  }, [topic, selectedCategory, preFetchBatch]);
 
-  const handleAnswer = (isCorrect: boolean) => {
+  const handleAnswer = useCallback((isCorrect: boolean) => {
     setScore((prev) => ({
       correct: prev.correct + (isCorrect ? 1 : 0),
       total: prev.total + 1,
@@ -363,9 +363,9 @@ export default function Home() {
     // Track answer history for progress bar
     setAnswerHistory((prev) => [...prev, isCorrect]);
     // Note: Next question is now handled by GameScreen timer/button
-  };
+  }, []);
 
-  const handleNextQuestion = async () => {
+  const handleNextQuestion = useCallback(async () => {
     console.log("🔄 [GAME] handleNextQuestion called");
     console.log("📊 [GAME] Queue size:", questionsQueueRef.current.length);
     console.log("📊 [GAME] Current content available:", !!currentContentRef.current);
@@ -534,9 +534,9 @@ export default function Home() {
         return;
       }
     }
-  };
+  }, [handleStartGame, preFetchBatch, selectedCategory]);
 
-  const handleNewTopic = () => {
+  const handleNewTopic = useCallback(() => {
     setTrivia(null);
     setTopic("");
     setCurrentTopic("");
@@ -557,15 +557,15 @@ export default function Home() {
     }
     setLoadingMessage("");
     setError(null);
-  };
+  }, []);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setNotificationError(null);
     setError(null);
     if (currentContentRef.current) {
       handleStartGame();
     }
-  };
+  }, [handleStartGame]);
 
   if (trivia) {
     return (

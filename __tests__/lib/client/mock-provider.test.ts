@@ -1,4 +1,4 @@
-import { getMockBatch, MOCK_TRIVIA_BATCH } from "@/lib/client/mock-provider";
+import { getMockBatch, MOCK_TRIVIA_BATCH } from "@/lib/shared/mock-provider";
 import { TriviaQuestion } from "@/lib/types";
 
 describe("Mock Provider", () => {

@@ -119,10 +119,9 @@ describe("AI Service", () => {
     );
   });
 
-  it("should return null when all providers fail", async () => {
+  it("should throw when no providers are configured", async () => {
     // No API keys set
-    const result = await generateTriviaFromContent("Test content...");
-    expect(result).toBeNull();
+    await expect(generateTriviaFromContent("Test content...")).rejects.toThrow("API key");
   });
 
   it("should handle previous questions in prompt", async () => {

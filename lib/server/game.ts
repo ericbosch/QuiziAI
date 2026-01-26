@@ -67,6 +67,14 @@ export async function generateTriviaFromContentServer(
       console.error("💥 [AI] Error message:", error.message);
       console.error("💥 [AI] Error stack:", error.stack);
 
+      if (error.message === "RATE_LIMIT") {
+        logger.error("⏳ [AI] Rate limit/quota issue detected");
+        return {
+          trivia: null,
+          error: "RATE_LIMIT", // Special error code for rate limiting
+        };
+      }
+
       // Return more specific error message
       if (error.message.includes("API key") && !error.message.includes("quota")) {
         logger.error("🔑 [AI] API key configuration issue detected");
@@ -110,6 +118,45 @@ export async function generateTriviaBatch(
   const questions: TriviaQuestion[] = [];
   const errors: string[] = [];
 
+  const runSequentialFallback = async () => {
+    logger.warn("⚠️ [AI] Batch generation failed, falling back to sequential generation");
+    let currentQuestions = [...previousQuestions];
+    let currentIndices = [...previousAnswerIndices];
+
+    for (let i = 0; i < count && questions.length < count; i++) {
+      try {
+        const result = await generateTriviaFromContentServer(
+          content,
+          currentQuestions,
+          currentIndices
+        );
+
+        if (result.trivia) {
+          const isDuplicate = currentQuestions.some(
+            (q) => q.toLowerCase().trim() === result.trivia!.question.toLowerCase().trim()
+          );
+
+          if (!isDuplicate) {
+            questions.push(result.trivia);
+            currentQuestions.push(result.trivia.question);
+            currentIndices.push(result.trivia.correctAnswerIndex);
+          }
+        } else if (result.error === "RATE_LIMIT") {
+          logger.warn(`⚠️ [AI] Rate limit hit after ${questions.length} questions`);
+          errors.push("RATE_LIMIT");
+          break;
+        }
+
+        // Small delay between requests
+        if (i < count - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (err) {
+        logger.error(`❌ [AI] Error generating question ${i + 1} in fallback:`, err);
+      }
+    }
+  };
+
   try {
     // Try to generate all questions in a single API call
     const batchResult = await generateTriviaFromContent(
@@ -142,47 +189,12 @@ export async function generateTriviaBatch(
       questions.push(batchResult);
     } else {
       errors.push("Failed to generate batch");
+      await runSequentialFallback();
     }
   } catch (error) {
     logger.error(`❌ [AI] Error generating batch:`, error);
     errors.push(error instanceof Error ? error.message : "Unknown error");
-    
-    // Fallback: try generating questions one by one if batch fails
-    logger.warn("⚠️ [AI] Batch generation failed, falling back to sequential generation");
-    let currentQuestions = [...previousQuestions];
-    let currentIndices = [...previousAnswerIndices];
-    
-    for (let i = 0; i < count && questions.length < count; i++) {
-      try {
-        const result = await generateTriviaFromContentServer(
-          content,
-          currentQuestions,
-          currentIndices
-        );
-
-        if (result.trivia) {
-          const isDuplicate = currentQuestions.some(
-            (q) => q.toLowerCase().trim() === result.trivia!.question.toLowerCase().trim()
-          );
-
-          if (!isDuplicate) {
-            questions.push(result.trivia);
-            currentQuestions.push(result.trivia.question);
-            currentIndices.push(result.trivia.correctAnswerIndex);
-          }
-        } else if (result.error === "RATE_LIMIT") {
-          logger.warn(`⚠️ [AI] Rate limit hit after ${questions.length} questions`);
-          break;
-        }
-
-        // Small delay between requests
-        if (i < count - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      } catch (err) {
-        logger.error(`❌ [AI] Error generating question ${i + 1} in fallback:`, err);
-      }
-    }
+    await runSequentialFallback();
   }
 
   logger.log(`✅ [AI] Batch generation complete: ${questions.length}/${count} questions generated`);

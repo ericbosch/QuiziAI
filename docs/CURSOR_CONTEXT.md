@@ -54,8 +54,10 @@ QuiziAI/
 │   │
 │   ├── client/                  # CLIENT-ONLY CODE
 │   │   ├── wikipedia-client.ts # Wikipedia fetch (primary)
-│   │   ├── fallback-data.ts    # Backup data sources
-│   │   ├── mock-provider.ts    # Spanish mock questions (testing)
+│   │   └── fallback-data.ts    # Backup data sources
+│   │
+│   ├── shared/                  # SHARED CODE (client + server safe)
+│   │   └── mock-provider.ts    # Spanish mock questions (testing)
 │   │
 │   └── types.ts                # Shared types
 │
@@ -266,7 +268,8 @@ NEXT_PUBLIC_USE_MOCKS=true  # Use Spanish mock questions
 ### 3. Timer Management
 ❌ Don't put `timeLeft` in `useEffect` dependencies  
 ✅ Use `timerStartedRef` to prevent re-runs  
-✅ Clean up timers in `useEffect` return function
+✅ Clean up timers in `useEffect` return function  
+✅ Memoize `onAnswer` / `onNextQuestion` callbacks to avoid timer cleanup on re-renders
 
 ### 4. Question Queue
 ❌ Don't reintroduce `question-cache.ts` (removed)  

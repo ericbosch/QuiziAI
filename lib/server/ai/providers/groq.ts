@@ -60,6 +60,14 @@ export class GroqProvider implements AIProvider {
       if (!response.ok) {
         const errorText = await response.text();
         logger.warn(`⚠️ [GROQ] API error: ${response.status}`, errorText.substring(0, 200));
+        const normalizedError = errorText.toLowerCase();
+        if (
+          response.status === 429 ||
+          normalizedError.includes("quota") ||
+          normalizedError.includes("rate limit")
+        ) {
+          throw new Error("RATE_LIMIT");
+        }
         return null;
       }
 
