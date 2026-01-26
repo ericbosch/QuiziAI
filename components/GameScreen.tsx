@@ -239,6 +239,10 @@ export default function GameScreen({
     return "bg-gray-800 text-gray-500";
   };
 
+  const totalAnswers = answerHistory.length;
+  const segmentCount = Math.min(totalAnswers, 10);
+  const recentHistory = segmentCount > 0 ? answerHistory.slice(-segmentCount) : [];
+
   return (
     <div className="relative flex flex-col h-screen max-h-screen overflow-hidden bg-black text-white">
       {/* Header with category, score and restart button */}
@@ -270,9 +274,8 @@ export default function GameScreen({
       {score && score.total > 0 && (
         <div className="px-4 pb-2">
           <div className="flex gap-1.5 justify-center items-center">
-            {Array.from({ length: Math.min(score.total, 10) }).map((_, index) => {
-              const isAnswered = index < answerHistory.length;
-              const isCorrect = isAnswered ? answerHistory[index] : null;
+            {Array.from({ length: segmentCount }).map((_, index) => {
+              const isCorrect = recentHistory[index] ?? null;
               
               return (
                 <div
@@ -287,8 +290,8 @@ export default function GameScreen({
                 />
               );
             })}
-            {score.total > 10 && (
-              <span className="text-xs text-gray-500 ml-1">+{score.total - 10}</span>
+            {totalAnswers > 10 && (
+              <span className="text-xs text-gray-500 ml-1">+{totalAnswers - 10}</span>
             )}
           </div>
         </div>
@@ -373,7 +376,7 @@ export default function GameScreen({
       {/* Footer with attribution */}
       <div className="px-4 pb-4 pt-2">
         <div className="text-center text-xs text-gray-600">
-          <p>Powered by Wikipedia & DuckDuckGo</p>
+          <p>Impulsado por Wikipedia</p>
           {currentTopic && (
             <p className="text-gray-700 mt-1">Tema: {currentTopic}</p>
           )}

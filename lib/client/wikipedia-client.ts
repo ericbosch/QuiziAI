@@ -1,13 +1,8 @@
 "use client";
 
-export interface WikipediaSummary {
-  title: string;
-  extract: string;
-  extract_html?: string;
-  thumbnail?: {
-    source: string;
-  };
-}
+import type { WikipediaSummary } from "@/lib/types";
+
+export type { WikipediaSummary };
 
 /**
  * Client-side Wikipedia fetch - works better as browser requests are less likely to be blocked

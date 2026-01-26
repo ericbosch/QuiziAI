@@ -17,7 +17,7 @@ npm run dev:tunnel       # Dev server + ngrok tunnel (mobile)
 npm run build            # Production build
 npm run start            # Production server
 npm run lint             # ESLint check
-npm run lint:fix         # Auto-fix lint issues
+npm run lint -- --fix    # Auto-fix lint issues
 
 # Testing
 npm test                 # Run all unit tests
@@ -127,21 +127,14 @@ tail -f logs/quiziai.log
 
 ## 📊 Test Coverage Targets
 
-| Module | Target | Current |
-|--------|--------|---------|
-| `lib/server/ai` | 95%+ | 98.36% ✅ |
-| `lib/server` | 85%+ | 88.07% ✅ |
-| `components` | 80%+ | 79.08% ✅ |
-| `lib/client` | 75%+ | 91.22% ✅ |
-| Overall | 80%+ | 82.76% ✅ |
-
-**Note:** `app/page.tsx` (84.25%) is covered by E2E tests.
+See `docs/TEST_COVERAGE.md` for the latest module breakdown.
 
 ---
 
 ## 🔗 Documentation
 
 - `docs/CURSOR_CONTEXT.md` - **AI context reset guide**
+- `docs/CURSOR_SETUP.md` - Cursor AI setup + prompt template
 - `docs/ARCHITECTURE.md` - Full technical architecture
 - `docs/PRODUCT_LOG.md` - Development history
 - `README.md` - Setup & installation
@@ -149,5 +142,5 @@ tail -f logs/quiziai.log
 
 ---
 
-**Last Updated:** 2026-01-24  
+**Last Updated:** 2026-01-26  
 **Version:** 1.0.0-alpha

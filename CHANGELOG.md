@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Game Flow**: Infinite trivia generation from selected topics
 - **Category Selection**: Quick play with curated topics or manual input
 - **AI Providers**: Automatic failover on quota exceeded
-- **Data Sources**: Wikipedia (Spanish/English) + DuckDuckGo fallback
+- **Data Sources**: Wikipedia (Spanish/English) only
 - **UI/UX**: Thumb-friendly buttons, progress bar, visual feedback
 - **Logging**: Dual logging to console and file
 

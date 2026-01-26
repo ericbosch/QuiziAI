@@ -61,10 +61,15 @@ export class GeminiProvider implements AIProvider {
 
         if (!response.ok) {
           const errorText = await response.text();
+          const normalizedError = errorText.toLowerCase();
           // Check for quota exceeded
-          if (response.status === 429 || errorText.includes("quota") || errorText.includes("Quota")) {
+          if (
+            response.status === 429 ||
+            normalizedError.includes("quota") ||
+            normalizedError.includes("rate limit")
+          ) {
             logger.warn(`⚠️ [GEMINI] Quota exceeded for ${modelName}, trying alternatives...`);
-            break; // Exit Gemini loop, try alternatives
+            throw new Error("RATE_LIMIT");
           }
           logger.warn(`⚠️ [GEMINI] REST API model ${modelName} failed:`, response.status, errorText.substring(0, 200));
           continue;
@@ -119,9 +124,14 @@ export class GeminiProvider implements AIProvider {
           return parsed;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
-          if (errorMessage.includes("quota") || errorMessage.includes("429")) {
+          const normalizedMessage = errorMessage.toLowerCase();
+          if (
+            normalizedMessage.includes("quota") ||
+            normalizedMessage.includes("rate limit") ||
+            normalizedMessage.includes("429")
+          ) {
             logger.warn("⚠️ [GEMINI] Quota exceeded, trying alternatives...");
-            break;
+            throw new Error("RATE_LIMIT");
           }
           logger.warn(`⚠️ [GEMINI] SDK model ${modelName} failed:`, errorMessage);
           continue;

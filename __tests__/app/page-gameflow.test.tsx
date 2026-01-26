@@ -414,7 +414,7 @@ describe("Home Page - Game Flow", () => {
     expect(mockGenerateTriviaBatch).toHaveBeenCalledTimes(2);
   });
 
-  it("should retry using queued questions without regenerating batch", async () => {
+  it("should retry using queued questions without refetching content", async () => {
     const batchQuestions = Array.from({ length: 5 }, (_, i) => ({
       question: `Retry question ${i + 1}?`,
       options: ["A", "B", "C", "D"] as [string, string, string, string],
@@ -446,8 +446,8 @@ describe("Home Page - Game Flow", () => {
       expect(screen.getByText("Retry question 2?")).toBeInTheDocument();
     });
 
-    expect(mockGenerateTriviaBatch).toHaveBeenCalled();
-    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledTimes(2);
+    expect(mockGenerateTriviaBatch).toHaveBeenCalledTimes(1);
+    expect(mockFetchWikipediaSummaryClient).toHaveBeenCalledTimes(1);
   });
 
   it("should use queued question on next question without refetching", async () => {

@@ -159,7 +159,7 @@ When suggesting changes:
 ### Wikipedia Fetch:
 - Client-side only (@lib/client/wikipedia-client.ts)
 - MediaWiki API first, REST API fallback
-- Multiple fallback sources
+- English Wikipedia fallback only (Wikipedia-only source of truth)
 - Never server-side (gets blocked)
 
 ### Styling:
@@ -167,6 +167,10 @@ When suggesting changes:
 - Mobile-first: default mobile, then `md:`, `lg:`
 - Dark theme: `bg-black`, `bg-gray-900`, `text-white`
 - Thumb-friendly: min 44x44px touch targets
+
+### Language Policy:
+- User-facing UI: Spanish only
+- Docs, logs, commit messages, code comments: English
 
 ## MEMORY BANK PROTOCOL
 
