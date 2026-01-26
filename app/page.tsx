@@ -158,8 +158,10 @@ export default function Home() {
 
       // Check queue first - dequeue a question
       let questionFromQueue: TriviaQuestion | null = null;
+      let remainingQueueLength: number | null = null;
       if (questionsQueueRef.current.length > 0) {
         questionFromQueue = questionsQueueRef.current[0];
+        remainingQueueLength = Math.max(questionsQueueRef.current.length - 1, 0);
         // Remove from queue (dequeue)
         setQuestionsQueue((prev) => {
           const updated = prev.slice(1); // Remove first element
@@ -190,6 +192,7 @@ export default function Home() {
 
           // Dequeue first question
           questionFromQueue = batch.questions[0];
+          remainingQueueLength = Math.max(batch.questions.length - 1, 0);
           setQuestionsQueue((prev) => {
             const updated = prev.slice(1);
             questionsQueueRef.current = updated;
@@ -262,6 +265,8 @@ export default function Home() {
           
           if (questionsQueueRef.current.length > 0) {
             questionFromQueue = questionsQueueRef.current[0];
+            const baseLength = remainingQueueLength ?? questionsQueueRef.current.length;
+            remainingQueueLength = Math.max(baseLength - 1, 0);
             setQuestionsQueue((prev) => {
               const updated = prev.slice(1);
               questionsQueueRef.current = updated;
@@ -285,6 +290,7 @@ export default function Home() {
                 return updated;
               });
               questionFromQueue = batch.questions[0];
+              remainingQueueLength = Math.max(batch.questions.length - 1, 0);
               setQuestionsQueue((prev) => {
                 const updated = prev.slice(1);
                 questionsQueueRef.current = updated;
@@ -327,7 +333,8 @@ export default function Home() {
           setLoadingMessage("");
 
           // Pre-fetch next batch if queue is low (2 or fewer questions)
-          if (questionsQueueRef.current.length <= PRE_FETCH_THRESHOLD && !isFetchingBatchRef.current) {
+          const queueLengthForPrefetch = remainingQueueLength ?? questionsQueueRef.current.length;
+          if (queueLengthForPrefetch <= PRE_FETCH_THRESHOLD && !isFetchingBatchRef.current) {
             preFetchBatch(summary.extract);
           }
           return;
