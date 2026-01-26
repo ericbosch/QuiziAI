@@ -48,9 +48,8 @@ An infinite, personalized trivia experience where content is generated on the fl
   - Server-side file logging for AI operations and API calls
   - Automatic log rotation (10MB limit)
   - Timestamped entries with log levels
-- `lib/client/fallback-data.ts`: Multiple fallback data sources
+- `lib/client/fallback-data.ts`: Wikipedia-only fallback data source
   - English Wikipedia (MediaWiki API)
-  - DuckDuckGo Instant Answer API (no API key required)
   - Comprehensive error logging
 - `lib/server/ai.ts`: Gemini integration with strict JSON output enforcement
   - **Dynamic prompt builder** - Includes previous questions and `previousAnswerIndices` to avoid duplicates and vary correct-answer position
@@ -160,7 +159,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 ---
 
 ## ⚖️ Legal & Compliance
-1. **Attribution:** ✅ Footer displays "Powered by Wikipedia & DuckDuckGo" on all screens. "Powered by TMDB" pending Phase 2.
+1. **Attribution:** ✅ Footer displays "Powered by Wikipedia" on all screens. "Powered by TMDB" pending Phase 2.
 2. **IP Policy:** ✅ Text-only questions in MVP. No copyrighted images/posters.
 3. **Privacy:** ✅ No login required. Anonymous gameplay to meet GDPR.
 
@@ -231,13 +230,12 @@ An infinite, personalized trivia experience where content is generated on the fl
   - Spanish Wikipedia MediaWiki API (primary)
   - Spanish Wikipedia REST API (fallback)
   - English Wikipedia MediaWiki API (fallback)
-  - DuckDuckGo Instant Answer API (fallback)
 - ✅ Gemini 1.5 Flash integration with JSON output (`lib/server/ai.ts` - enforces JSON structure)
 - ✅ Dark-themed UI with thumb-friendly buttons (`components/GameScreen.tsx` - black bg, large buttons in bottom half)
 - ✅ 1-second feedback delay implemented (`setTimeout(() => {...}, 1000)` in GameScreen)
 - ✅ Progress bar displayed on game screen (visual progress indicator)
 - ✅ Infinite trivia generation from same topic (topic persistence in `app/page.tsx`)
-- ✅ Attribution displayed on all screens (`app/page.tsx` and `components/GameScreen.tsx` - "Powered by Wikipedia & DuckDuckGo")
+- ✅ Attribution displayed on all screens (`app/page.tsx` and `components/GameScreen.tsx` - "Powered by Wikipedia")
 - ✅ All test files created and structured correctly (4 test files, 33+ test cases)
 - ✅ No linter errors (verified with ESLint)
 - ✅ TypeScript strict mode enabled (all types properly defined)
@@ -271,8 +269,6 @@ An infinite, personalized trivia experience where content is generated on the fl
 
 2. **Multiple fallback data sources** (`lib/client/fallback-data.ts`):
    - English Wikipedia (MediaWiki API) - first fallback
-   - DuckDuckGo Instant Answer API - second fallback (no API key required)
-   - Provides similar content structure for trivia generation
    - Automatically used when Spanish Wikipedia is unavailable
    - Comprehensive logging for debugging
 
@@ -295,8 +291,7 @@ An infinite, personalized trivia experience where content is generated on the fl
 1. Primary: Spanish Wikipedia (MediaWiki API) - Client-side fetch
 2. Fallback 1: Spanish Wikipedia (REST API) - Client-side fetch
 3. Fallback 2: English Wikipedia (MediaWiki API) - Client-side fetch
-4. Fallback 3: DuckDuckGo Instant Answer API - Client-side fetch
-5. AI Providers (automatic fallback on quota/error):
+4. AI Providers (automatic fallback on quota/error):
    - Primary: Gemini 2.5/3 Flash/Pro - Server-side (API key protected)
    - Fallback 1: Groq (Llama 3.1 8B) - Server-side, free tier
    - Fallback 2: Hugging Face (SmolLM3-3B) - Server-side, free tier

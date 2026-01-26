@@ -45,7 +45,7 @@ QuiziAI/
 │   │   └── logger.ts           # Server-side file logging utility
 │   ├── client/                  # Client-only code
 │   │   ├── wikipedia-client.ts # Client-side Wikipedia fetch (primary)
-│   │   ├── fallback-data.ts    # Fallback data sources (English Wiki, DuckDuckGo)
+│   │   ├── fallback-data.ts    # Fallback data sources (English Wikipedia)
 │   ├── shared/                  # Shared (client + server safe)
 │   │   └── mock-provider.ts    # Spanish mock questions (testing)
 │   └── types.ts                # Shared TypeScript types
@@ -92,7 +92,7 @@ QuiziAI/
 3. Fetch content (client-side):
    - lib/client/wikipedia-client.ts → MediaWiki API (primary)
    - If fails → REST API fallback
-   - If fails → lib/client/fallback-data.ts → English Wiki / DuckDuckGo
+   - If fails → lib/client/fallback-data.ts → English Wikipedia
    ↓
 4. Get question (queue-first, then batch):
    - Check questionsQueue state; dequeue if available.
@@ -242,7 +242,6 @@ QuiziAI/
 - **Function:** `fetchFallbackData(topic)`
 - **Fallback Chain:**
   1. English Wikipedia MediaWiki API
-  2. DuckDuckGo Instant Answer API
 - **Returns:** `{ title: string, extract: string } | null`
 
 ### `lib/server/logger.ts` (Server-Side Logging)
@@ -302,8 +301,10 @@ QuiziAI/
 - **API:** MediaWiki API (`en.wikipedia.org/w/api.php`)
 - **No API key required**
 
-**DuckDuckGo (Fallback)**
-- **API:** Instant Answer API (`api.duckduckgo.com`)
+**Note:** Wikipedia-only source of truth (no non-Wikipedia fallbacks).
+
+**English Wikipedia (Fallback)**
+- **API:** MediaWiki API (`en.wikipedia.org/w/api.php`)
 - **No API key required**
 
 ---

@@ -159,7 +159,7 @@ When suggesting changes:
 ### Wikipedia Fetch:
 - Client-side only (@lib/client/wikipedia-client.ts)
 - MediaWiki API first, REST API fallback
-- Multiple fallback sources
+- English Wikipedia fallback only (Wikipedia-only source of truth)
 - Never server-side (gets blocked)
 
 ### Styling:

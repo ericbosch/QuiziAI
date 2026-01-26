@@ -98,7 +98,6 @@ QuiziAI/
    - lib/client/wikipedia-client.ts → MediaWiki API (Spanish)
    - Fallback → REST API
    - Fallback → English Wikipedia
-   - Fallback → DuckDuckGo
    ↓
 4. Get question (QUEUE-FIRST):
    - Check questionsQueue state
@@ -134,8 +133,9 @@ Gemini (2.5/3 Flash/Pro) → Groq (Llama 3.1 8B) → HuggingFace (SmolLM3-3B)
 
 **Data Sources (automatic failover):**
 ```
-Spanish Wiki (MediaWiki) → Spanish Wiki (REST) → English Wiki → DuckDuckGo
+Spanish Wiki (MediaWiki) → Spanish Wiki (REST) → English Wiki
 ```
+**Note:** Wikipedia-only source of truth (no non-Wikipedia fallbacks).
 
 ---
 
@@ -223,8 +223,8 @@ HUGGINGFACE_MODEL=...       # Optional HF model override (hf-inference text-gene
 - Spanish Wikipedia REST API (fallback)
 - English Wikipedia (fallback)
 
-**DuckDuckGo (no API key):**
-- Instant Answer API (final fallback)
+**English Wikipedia (no API key):**
+- MediaWiki API (final fallback)
 
 ---
 

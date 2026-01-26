@@ -457,6 +457,10 @@ export default function Home() {
             askedQuestionsRef.current,
             previousAnswerIndicesRef.current
           );
+
+          if (batch.errors.some(e => e === "RATE_LIMIT")) {
+            setNotificationError("RATE_LIMIT");
+          }
           
           if (batch.questions.length > 0) {
             setQuestionsQueue((prev) => {
@@ -484,9 +488,13 @@ export default function Home() {
             setLoading(false);
             return;
           }
+          setNotificationError("No se pudo generar la siguiente pregunta. Intenta de nuevo.");
+        } else {
+          setNotificationError("No se encontró información sobre este tema. Intenta con otro.");
         }
       } catch (error) {
         console.error("❌ [GAME] Error generating batch:", error);
+        setNotificationError("No se pudo generar la siguiente pregunta. Intenta de nuevo.");
       }
       setLoading(false);
       if (loadingMessageIntervalRef.current) {
@@ -501,37 +509,50 @@ export default function Home() {
     } else {
       // Have content but no category - regenerate batch from same content
       console.log("🔄 [GAME] Queue empty, regenerating batch from same content...");
-      const batch = await generateTriviaBatch(
-        currentContentRef.current,
-        BATCH_SIZE,
-        askedQuestionsRef.current,
-        previousAnswerIndicesRef.current
-      );
-      
-      if (batch.questions.length > 0) {
-        setQuestionsQueue((prev) => {
-          const updated = [...prev, ...batch.questions];
-          questionsQueueRef.current = updated;
-          console.log(`✅ [GAME] Regenerated ${batch.questions.length} questions, added to queue`);
-          return updated;
-        });
+      try {
+        setLoading(true);
+        const batch = await generateTriviaBatch(
+          currentContentRef.current,
+          BATCH_SIZE,
+          askedQuestionsRef.current,
+          previousAnswerIndicesRef.current
+        );
         
-        // Use first question from batch
-        const questionFromQueue = batch.questions[0];
-        setQuestionsQueue((prev) => {
-          const updated = prev.slice(1);
-          questionsQueueRef.current = updated;
-          return updated;
-        });
-        
-        const newQuestions = [...askedQuestionsRef.current, questionFromQueue.question];
-        const newIndices = [...previousAnswerIndicesRef.current, questionFromQueue.correctAnswerIndex];
-        setAskedQuestions(newQuestions);
-        setPreviousAnswerIndices(newIndices);
-        askedQuestionsRef.current = newQuestions;
-        previousAnswerIndicesRef.current = newIndices;
-        setTrivia(questionFromQueue);
-        return;
+        if (batch.errors.some(e => e === "RATE_LIMIT")) {
+          setNotificationError("RATE_LIMIT");
+        }
+
+        if (batch.questions.length > 0) {
+          setQuestionsQueue((prev) => {
+            const updated = [...prev, ...batch.questions];
+            questionsQueueRef.current = updated;
+            console.log(`✅ [GAME] Regenerated ${batch.questions.length} questions, added to queue`);
+            return updated;
+          });
+          
+          // Use first question from batch
+          const questionFromQueue = batch.questions[0];
+          setQuestionsQueue((prev) => {
+            const updated = prev.slice(1);
+            questionsQueueRef.current = updated;
+            return updated;
+          });
+          
+          const newQuestions = [...askedQuestionsRef.current, questionFromQueue.question];
+          const newIndices = [...previousAnswerIndicesRef.current, questionFromQueue.correctAnswerIndex];
+          setAskedQuestions(newQuestions);
+          setPreviousAnswerIndices(newIndices);
+          askedQuestionsRef.current = newQuestions;
+          previousAnswerIndicesRef.current = newIndices;
+          setTrivia(questionFromQueue);
+          return;
+        }
+        setNotificationError("No se pudo generar la siguiente pregunta. Intenta de nuevo.");
+      } catch (error) {
+        console.error("❌ [GAME] Error regenerating batch:", error);
+        setNotificationError("No se pudo generar la siguiente pregunta. Intenta de nuevo.");
+      } finally {
+        setLoading(false);
       }
     }
   }, [handleStartGame, preFetchBatch, selectedCategory]);
@@ -562,10 +583,14 @@ export default function Home() {
   const handleRetry = useCallback(() => {
     setNotificationError(null);
     setError(null);
+    if (questionsQueueRef.current.length > 0) {
+      handleNextQuestion();
+      return;
+    }
     if (currentContentRef.current) {
       handleStartGame();
     }
-  }, [handleStartGame]);
+  }, [handleNextQuestion, handleStartGame]);
 
   if (trivia) {
     return (
@@ -730,7 +755,7 @@ export default function Home() {
         </div>
 
         <div className="mt-8 text-center text-xs text-gray-600">
-          <p>Powered by Wikipedia & DuckDuckGo</p>
+          <p>Powered by Wikipedia</p>
         </div>
       </div>
     </div>

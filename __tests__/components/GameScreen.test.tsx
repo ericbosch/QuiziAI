@@ -252,7 +252,7 @@ describe("GameScreen Component", () => {
       <GameScreen trivia={mockTrivia} onAnswer={mockOnAnswer} onNextQuestion={mockOnNextQuestion} />
     );
 
-    expect(screen.getByText("Powered by Wikipedia & DuckDuckGo")).toBeInTheDocument();
+    expect(screen.getByText("Powered by Wikipedia")).toBeInTheDocument();
   });
 
   it("should show loading overlay when loading is true", () => {

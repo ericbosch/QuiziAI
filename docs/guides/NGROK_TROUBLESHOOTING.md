@@ -6,7 +6,7 @@ When accessing via ngrok, you should see:
 1. ✅ **Title**: "QuiziAI 🧠" (large, centered)
 2. ✅ **Input field**: "Tema de trivia" with placeholder text
 3. ✅ **Button**: "Comenzar" (blue button)
-4. ✅ **Footer**: "Powered by Wikipedia & DuckDuckGo"
+4. ✅ **Footer**: "Powered by Wikipedia"
 
 ## Common Issues
 
